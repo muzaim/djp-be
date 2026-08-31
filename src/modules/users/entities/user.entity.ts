@@ -9,7 +9,7 @@ import {
 @Entity('mst_users')
 export class User {
   @PrimaryGeneratedColumn('uuid')
-  id: string;
+  id!: string;
 
   @Column({ unique: true })
   email!: string;

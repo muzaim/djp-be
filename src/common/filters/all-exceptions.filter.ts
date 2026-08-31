@@ -48,11 +48,12 @@ export class AllExceptionsFilter implements ExceptionFilter {
     }
 
     const responseBody = {
+      success: false,
       statusCode: httpStatus,
-      timestamp: new Date().toISOString(),
-      path: httpAdapter.getRequestUrl(request),
       error,
       message,
+      timestamp: new Date().toISOString(),
+      path: httpAdapter.getRequestUrl(request),
     };
 
     // Log internal server errors (500) as error logs with stack traces,

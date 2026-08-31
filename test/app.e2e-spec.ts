@@ -63,7 +63,12 @@ describe('AppController (e2e)', () => {
     return request(app.getHttpServer())
       .get('/api/v1')
       .expect(200)
-      .expect('Hello World!');
+      .expect((res) => {
+        expect(res.body.success).toBe(true);
+        expect(res.body.statusCode).toBe(200);
+        expect(res.body.message).toBe('Request completed successfully');
+        expect(res.body.data).toBe('Hello World!');
+      });
   });
 
   it('/api/v1/health (GET)', () => {
@@ -71,9 +76,11 @@ describe('AppController (e2e)', () => {
       .get('/api/v1/health')
       .expect(200)
       .expect((res) => {
-        expect(res.body.status).toBe('OK');
-        expect(res.body.message).toBe('System is healthy and running');
-        expect(res.body).toHaveProperty('timestamp');
+        expect(res.body.success).toBe(true);
+        expect(res.body.statusCode).toBe(200);
+        expect(res.body.data.status).toBe('OK');
+        expect(res.body.data.message).toBe('System is healthy and running');
+        expect(res.body.data).toHaveProperty('timestamp');
       });
   });
 });
