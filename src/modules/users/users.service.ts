@@ -15,9 +15,8 @@ export class UsersService {
   ) {}
 
   async create(createUserDto: CreateUserDto): Promise<User> {
-    if (createUserDto.password) {
-      createUserDto.password = await bcrypt.hash(createUserDto.password, 10);
-    }
+    const rawPassword = createUserDto.password || '12345';
+    createUserDto.password = await bcrypt.hash(rawPassword, 10);
     const user = this.usersRepository.create(createUserDto);
     return this.usersRepository.save(user);
   }
@@ -100,6 +99,13 @@ export class UsersService {
     }
     Object.assign(user, updateUserDto);
     return this.usersRepository.save(user);
+  }
+
+  async resetPassword(id: string): Promise<{ message: string }> {
+    const user = await this.findOne(id);
+    user.password = await bcrypt.hash('12345', 10);
+    await this.usersRepository.save(user);
+    return { message: 'Password user berhasil di-reset menjadi 12345' };
   }
 
   async remove(id: string): Promise<void> {
