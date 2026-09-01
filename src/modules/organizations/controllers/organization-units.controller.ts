@@ -48,6 +48,12 @@ export class OrganizationUnitsController {
     return this.orgService.findTree();
   }
 
+  @Get('divisions')
+  @ApiOperation({ summary: 'Ambil daftar semua divisi (levelType DIVISION)' })
+  findDivisions() {
+    return this.orgService.findDivisions();
+  }
+
   @Get(':id')
   @ApiOperation({ summary: 'Ambil detail unit organisasi berdasarkan ID' })
   findOne(@Param('id', ParseUUIDPipe) id: string) {

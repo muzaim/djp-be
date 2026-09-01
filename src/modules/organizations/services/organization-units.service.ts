@@ -55,6 +55,14 @@ export class OrganizationUnitsService {
     return roots;
   }
 
+  async findDivisions(): Promise<OrganizationUnit[]> {
+    return this.orgRepository.find({
+      where: { levelType: 'DIVISION' },
+      relations: ['parent'],
+      order: { name: 'ASC' },
+    });
+  }
+
   async findOne(id: string): Promise<OrganizationUnit> {
     const org = await this.orgRepository.findOne({
       where: { id },
