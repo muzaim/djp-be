@@ -8,11 +8,12 @@ import {
   Delete,
   ParseUUIDPipe,
 } from '@nestjs/common';
-import { ApiTags, ApiOperation } from '@nestjs/swagger';
+import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { PositionsService } from '../services/positions.service';
 import { CreatePositionDto } from '../dto/create-position.dto';
 import { UpdatePositionDto } from '../dto/update-position.dto';
 
+@ApiBearerAuth()
 @ApiTags('Positions')
 @Controller('positions')
 export class PositionsController {

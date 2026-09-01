@@ -8,12 +8,13 @@ import {
   Delete,
   ParseUUIDPipe,
 } from '@nestjs/common';
-import { ApiTags, ApiOperation } from '@nestjs/swagger';
+import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { RolesService } from './roles.service';
 import { CreateRoleDto } from './dto/create-role.dto';
 import { UpdateRoleDto } from './dto/update-role.dto';
 import { AssignRoleDto } from './dto/assign-role.dto';
 
+@ApiBearerAuth()
 @ApiTags('Roles')
 @Controller('roles')
 export class RolesController {

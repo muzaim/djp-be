@@ -8,11 +8,12 @@ import {
   Delete,
   ParseUUIDPipe,
 } from '@nestjs/common';
-import { ApiTags, ApiOperation } from '@nestjs/swagger';
+import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { OrganizationUnitsService } from '../services/organization-units.service';
 import { CreateOrganizationUnitDto } from '../dto/create-organization-unit.dto';
 import { UpdateOrganizationUnitDto } from '../dto/update-organization-unit.dto';
 
+@ApiBearerAuth()
 @ApiTags('Organization Units')
 @Controller('organization-units')
 export class OrganizationUnitsController {

@@ -8,11 +8,12 @@ import {
   Delete,
   ParseUUIDPipe,
 } from '@nestjs/common';
-import { ApiTags, ApiOperation } from '@nestjs/swagger';
+import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { JobLevelsService } from '../services/job-levels.service';
 import { CreateJobLevelDto } from '../dto/create-job-level.dto';
 import { UpdateJobLevelDto } from '../dto/update-job-level.dto';
 
+@ApiBearerAuth()
 @ApiTags('Job Levels')
 @Controller('job-levels')
 export class JobLevelsController {

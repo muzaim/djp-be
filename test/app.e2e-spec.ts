@@ -8,16 +8,23 @@ import * as request from 'supertest';
 import { AppModule } from './../src/app.module';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import { User } from './../src/modules/users/entities/user.entity';
+import { OrganizationUnit } from './../src/modules/organizations/entities/organization-unit.entity';
+import { JobLevel } from './../src/modules/organizations/entities/job-level.entity';
+import { Position } from './../src/modules/organizations/entities/position.entity';
+import { Role } from './../src/modules/roles/entities/role.entity';
+import { UserRole } from './../src/modules/roles/entities/user-role.entity';
 import { DataSource } from 'typeorm';
 
 describe('AppController (e2e)', () => {
   let app: INestApplication;
-  const mockUsersRepository = {
+  const mockRepo = {
     find: jest.fn().mockResolvedValue([]),
-    findOneBy: jest.fn(),
+    findOne: jest.fn().mockResolvedValue(null),
+    findOneBy: jest.fn().mockResolvedValue(null),
     create: jest.fn(),
     save: jest.fn(),
     delete: jest.fn(),
+    softRemove: jest.fn(),
   };
 
   beforeEach(async () => {
@@ -25,7 +32,17 @@ describe('AppController (e2e)', () => {
       imports: [AppModule],
     })
       .overrideProvider(getRepositoryToken(User))
-      .useValue(mockUsersRepository)
+      .useValue(mockRepo)
+      .overrideProvider(getRepositoryToken(OrganizationUnit))
+      .useValue(mockRepo)
+      .overrideProvider(getRepositoryToken(JobLevel))
+      .useValue(mockRepo)
+      .overrideProvider(getRepositoryToken(Position))
+      .useValue(mockRepo)
+      .overrideProvider(getRepositoryToken(Role))
+      .useValue(mockRepo)
+      .overrideProvider(getRepositoryToken(UserRole))
+      .useValue(mockRepo)
       .overrideProvider(DataSource)
       .useValue({
         initialize: jest.fn().mockResolvedValue(null),
@@ -38,7 +55,6 @@ describe('AppController (e2e)', () => {
 
     app = moduleFixture.createNestApplication();
 
-    // Align with global configs from main.ts
     app.setGlobalPrefix('api');
     app.enableVersioning({
       type: VersioningType.URI,
@@ -56,7 +72,9 @@ describe('AppController (e2e)', () => {
   });
 
   afterEach(async () => {
-    await app.close();
+    if (app) {
+      await app.close();
+    }
   });
 
   it('/api/v1 (GET)', () => {

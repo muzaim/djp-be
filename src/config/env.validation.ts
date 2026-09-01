@@ -28,6 +28,12 @@ export class EnvironmentVariables {
 
   @IsString()
   DB_DATABASE: string;
+
+  @IsString()
+  JWT_SECRET: string = 'supersecret_djp_key_2025';
+
+  @IsString()
+  JWT_EXPIRATION_TIME: string = '1d';
 }
 
 export function validate(config: Record<string, unknown>) {
