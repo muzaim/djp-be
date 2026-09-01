@@ -38,6 +38,9 @@ export class EnvironmentVariables {
   @IsOptional()
   @IsString()
   JWT_EXPIRATION_TIME?: string;
+
+  @IsString()
+  DEFAULT_USER_PASSWORD: string = '12345';
 }
 
 export function validate(config: Record<string, unknown>) {

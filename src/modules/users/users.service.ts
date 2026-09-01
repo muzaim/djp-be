@@ -1,5 +1,6 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
+import { ConfigService } from '@nestjs/config';
 import { Like, Repository } from 'typeorm';
 import { User } from './entities/user.entity';
 import { CreateUserDto } from './dto/create-user.dto';
@@ -12,10 +13,12 @@ export class UsersService {
   constructor(
     @InjectRepository(User)
     private readonly usersRepository: Repository<User>,
+    private readonly configService: ConfigService,
   ) {}
 
   async create(createUserDto: CreateUserDto): Promise<User> {
-    const rawPassword = createUserDto.password || '12345';
+    const defaultPassword = this.configService.get<string>('DEFAULT_USER_PASSWORD') || '12345';
+    const rawPassword = createUserDto.password || defaultPassword;
     createUserDto.password = await bcrypt.hash(rawPassword, 10);
     const user = this.usersRepository.create(createUserDto);
     return this.usersRepository.save(user);
@@ -103,9 +106,10 @@ export class UsersService {
 
   async resetPassword(id: string): Promise<{ message: string }> {
     const user = await this.findOne(id);
-    user.password = await bcrypt.hash('12345', 10);
+    const defaultPassword = this.configService.get<string>('DEFAULT_USER_PASSWORD') || '12345';
+    user.password = await bcrypt.hash(defaultPassword, 10);
     await this.usersRepository.save(user);
-    return { message: 'Password user berhasil di-reset menjadi 12345' };
+    return { message: `Password user berhasil di-reset menjadi ${defaultPassword}` };
   }
 
   async remove(id: string): Promise<void> {
