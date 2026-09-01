@@ -1,5 +1,5 @@
 import { plainToInstance } from 'class-transformer';
-import { IsEnum, IsNumber, IsString, validateSync } from 'class-validator';
+import { IsEnum, IsNumber, IsOptional, IsString, validateSync } from 'class-validator';
 
 export enum Environment {
   Development = 'development',
@@ -10,6 +10,9 @@ export enum Environment {
 export class EnvironmentVariables {
   @IsEnum(Environment)
   NODE_ENV: Environment = Environment.Development;
+
+  @IsEnum(Environment)
+  APP_MODE: Environment = Environment.Development;
 
   @IsNumber()
   PORT: number = 3000;
@@ -32,8 +35,9 @@ export class EnvironmentVariables {
   @IsString()
   JWT_SECRET: string = 'supersecret_djp_key_2025';
 
+  @IsOptional()
   @IsString()
-  JWT_EXPIRATION_TIME: string = '1d';
+  JWT_EXPIRATION_TIME?: string;
 }
 
 export function validate(config: Record<string, unknown>) {

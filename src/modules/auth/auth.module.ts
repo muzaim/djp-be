@@ -13,12 +13,23 @@ import { UsersModule } from '../users/users.module';
     PassportModule.register({ defaultStrategy: 'jwt' }),
     JwtModule.registerAsync({
       inject: [ConfigService],
-      useFactory: (configService: ConfigService) => ({
-        secret: configService.get<string>('JWT_SECRET'),
-        signOptions: {
-          expiresIn: configService.get<string>('JWT_EXPIRATION_TIME') || '1d',
-        },
-      }),
+      useFactory: (configService: ConfigService) => {
+        const appMode =
+          configService.get<string>('APP_MODE') ||
+          configService.get<string>('NODE_ENV') ||
+          'development';
+
+        const customExpiry = configService.get<string>('JWT_EXPIRATION_TIME');
+        // Dev: 24h (24 jam), Prod: 30m (30 menit)
+        const defaultExpiry = appMode === 'production' ? '30m' : '24h';
+
+        return {
+          secret: configService.get<string>('JWT_SECRET'),
+          signOptions: {
+            expiresIn: customExpiry || defaultExpiry,
+          },
+        };
+      },
     }),
   ],
   controllers: [AuthController],
