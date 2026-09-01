@@ -77,9 +77,9 @@ describe('AppController (e2e)', () => {
     }
   });
 
-  it('/api/v1 (GET)', () => {
+  it('/api/v1/ (GET)', () => {
     return request(app.getHttpServer())
-      .get('/api/v1')
+      .get('/api/v1/')
       .expect(200)
       .expect((res) => {
         expect(res.body.success).toBe(true);

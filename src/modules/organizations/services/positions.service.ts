@@ -16,12 +16,75 @@ export class PositionsService {
     private readonly orgRepository: Repository<OrganizationUnit>,
   ) {}
 
-  async create(createDto: CreatePositionDto): Promise<Position> {
-    const position = this.positionRepository.create(createDto);
-    return this.positionRepository.save(position);
+  public transformPosition(position: Position) {
+    const orgUnit = position.organizationUnit || null;
+    const division = this.findDivision(orgUnit);
+
+    return {
+      id: position.id,
+      title: position.title,
+      organizationUnitId: position.organizationUnitId,
+      organizationUnit: orgUnit
+        ? {
+            id: orgUnit.id,
+            code: orgUnit.code,
+            name: orgUnit.name,
+            levelType: orgUnit.levelType,
+            parentId: orgUnit.parentId,
+            parent: orgUnit.parent
+              ? {
+                  id: orgUnit.parent.id,
+                  code: orgUnit.parent.code,
+                  name: orgUnit.parent.name,
+                  levelType: orgUnit.parent.levelType,
+                }
+              : null,
+          }
+        : null,
+      division: division,
+      jobLevelId: position.jobLevelId,
+      jobLevel: position.jobLevel
+        ? {
+            id: position.jobLevel.id,
+            code: position.jobLevel.code,
+            name: position.jobLevel.name,
+            rankWeight: position.jobLevel.rankWeight,
+          }
+        : null,
+      parentPositionId: position.parentPositionId,
+      parentPosition: position.parentPosition
+        ? {
+            id: position.parentPosition.id,
+            title: position.parentPosition.title,
+          }
+        : null,
+      createdAt: position.createdAt,
+      updatedAt: position.updatedAt,
+    };
   }
 
-  async findAll(paginationDto: PaginationDto = new PaginationDto()): Promise<PaginatedResult<Position>> {
+  private findDivision(unit: any): any {
+    let curr = unit;
+    while (curr) {
+      if (curr.levelType === 'DIVISION') {
+        return {
+          id: curr.id,
+          code: curr.code,
+          name: curr.name,
+        };
+      }
+      curr = curr.parent;
+    }
+    return null;
+  }
+
+  async create(createDto: CreatePositionDto) {
+    const position = this.positionRepository.create(createDto);
+    const saved = await this.positionRepository.save(position);
+    return this.findOne(saved.id);
+  }
+
+  async findAll(paginationDto: PaginationDto = new PaginationDto()): Promise<PaginatedResult<any>> {
     const page = paginationDto.page || 1;
     const limit = paginationDto.limit || 10;
     const skip = (page - 1) * limit;
@@ -29,13 +92,20 @@ export class PositionsService {
 
     const whereCondition = search ? { title: Like(`%${search}%`) } : {};
 
-    const [items, totalItems] = await this.positionRepository.findAndCount({
+    const [rawItems, totalItems] = await this.positionRepository.findAndCount({
       where: whereCondition,
-      relations: ['organizationUnit', 'jobLevel', 'parentPosition'],
+      relations: [
+        'organizationUnit',
+        'organizationUnit.parent',
+        'jobLevel',
+        'parentPosition',
+      ],
       order: { createdAt: 'ASC' },
       skip,
       take: limit,
     });
+
+    const items = rawItems.map((pos) => this.transformPosition(pos));
 
     return {
       items,
@@ -48,7 +118,7 @@ export class PositionsService {
     };
   }
 
-  async findByDivision(divisionId: string): Promise<Position[]> {
+  async findByDivision(divisionId: string) {
     const childUnits = await this.orgRepository
       .createQueryBuilder('unit')
       .leftJoin('unit.parent', 'parent')
@@ -64,32 +134,51 @@ export class PositionsService {
       return [];
     }
 
-    return this.positionRepository.find({
+    const positions = await this.positionRepository.find({
       where: { organizationUnitId: In(unitIds) },
-      relations: ['organizationUnit', 'jobLevel', 'parentPosition'],
+      relations: [
+        'organizationUnit',
+        'organizationUnit.parent',
+        'jobLevel',
+        'parentPosition',
+      ],
       order: { title: 'ASC' },
     });
+
+    return positions.map((pos) => this.transformPosition(pos));
   }
 
-  async findOne(id: string): Promise<Position> {
+  async findOne(id: string) {
     const position = await this.positionRepository.findOne({
       where: { id },
-      relations: ['organizationUnit', 'jobLevel', 'parentPosition'],
+      relations: [
+        'organizationUnit',
+        'organizationUnit.parent',
+        'jobLevel',
+        'parentPosition',
+      ],
     });
     if (!position) {
       throw new NotFoundException(`Position with ID "${id}" not found`);
     }
-    return position;
+    return this.transformPosition(position);
   }
 
-  async update(id: string, updateDto: UpdatePositionDto): Promise<Position> {
-    const position = await this.findOne(id);
-    Object.assign(position, updateDto);
-    return this.positionRepository.save(position);
+  async update(id: string, updateDto: UpdatePositionDto) {
+    const rawPosition = await this.positionRepository.findOneBy({ id });
+    if (!rawPosition) {
+      throw new NotFoundException(`Position with ID "${id}" not found`);
+    }
+    Object.assign(rawPosition, updateDto);
+    await this.positionRepository.save(rawPosition);
+    return this.findOne(id);
   }
 
   async remove(id: string): Promise<void> {
-    const position = await this.findOne(id);
-    await this.positionRepository.softRemove(position);
+    const rawPosition = await this.positionRepository.findOneBy({ id });
+    if (!rawPosition) {
+      throw new NotFoundException(`Position with ID "${id}" not found`);
+    }
+    await this.positionRepository.softRemove(rawPosition);
   }
 }
