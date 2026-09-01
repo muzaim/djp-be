@@ -1,7 +1,8 @@
-import { Controller, Post, Body, Get } from '@nestjs/common';
+import { Controller, Post, Body, Get, HttpCode, HttpStatus } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { AuthService } from './auth.service';
 import { LoginDto } from './dto/login.dto';
+import { ChangePasswordDto } from './dto/change-password.dto';
 import { Public } from './decorators/public.decorator';
 import { GetUser } from './decorators/get-user.decorator';
 import { User } from '../users/entities/user.entity';
@@ -23,5 +24,16 @@ export class AuthController {
   @ApiOperation({ summary: 'Ambil profil user yang sedang login' })
   getProfile(@GetUser() user: User) {
     return this.authService.transformProfile(user);
+  }
+
+  @ApiBearerAuth()
+  @Post('change-password')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Ubah password user yang sedang login' })
+  changePassword(
+    @GetUser('id') userId: string,
+    @Body() changePasswordDto: ChangePasswordDto,
+  ) {
+    return this.authService.changePassword(userId, changePasswordDto);
   }
 }

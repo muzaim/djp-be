@@ -1,7 +1,8 @@
-import { Injectable, UnauthorizedException } from '@nestjs/common';
+import { BadRequestException, Injectable, UnauthorizedException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { UsersService } from '../users/users.service';
 import { LoginDto } from './dto/login.dto';
+import { ChangePasswordDto } from './dto/change-password.dto';
 import * as bcrypt from 'bcrypt';
 import { User } from '../users/entities/user.entity';
 
@@ -39,6 +40,23 @@ export class AuthService {
       tokenType: 'Bearer',
       user: this.transformProfile(user),
     };
+  }
+
+  async changePassword(userId: string, changePasswordDto: ChangePasswordDto) {
+    const confirm =
+      changePasswordDto.retypePassword ||
+      changePasswordDto.confirmPassword ||
+      changePasswordDto.retypeNewPassword ||
+      changePasswordDto.confirmNewPassword;
+
+    if (confirm && changePasswordDto.newPassword !== confirm) {
+      throw new BadRequestException('Password baru dan konfirmasi password tidak cocok');
+    }
+
+    const hashedPassword = await bcrypt.hash(changePasswordDto.newPassword, 10);
+    await this.usersService.updatePassword(userId, hashedPassword);
+
+    return { message: 'Password berhasil diubah' };
   }
 
   transformProfile(user: User) {

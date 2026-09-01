@@ -31,19 +31,25 @@ export class PositionsController {
 
   @Post('list')
   @HttpCode(HttpStatus.OK)
-  @ApiOperation({ summary: 'Ambil daftar posisi jabatan dengan pagination (via Body)' })
+  @ApiOperation({
+    summary: 'Ambil daftar posisi jabatan dengan pagination (via Body)',
+  })
   findAllPost(@Body() paginationDto: PaginationDto) {
     return this.positionsService.findAll(paginationDto);
   }
 
   @Get()
-  @ApiOperation({ summary: 'Ambil daftar posisi jabatan dengan pagination (via Query)' })
+  @ApiOperation({
+    summary: 'Ambil daftar posisi jabatan dengan pagination (via Query)',
+  })
   findAll(@Query() paginationDto: PaginationDto) {
     return this.positionsService.findAll(paginationDto);
   }
 
   @Get('by-division/:divisionId')
-  @ApiOperation({ summary: 'Ambil daftar posisi jabatan / fungsi berdasarkan ID Divisi' })
+  @ApiOperation({
+    summary: 'Ambil daftar posisi jabatan / fungsi berdasarkan ID Divisi',
+  })
   findByDivision(@Param('divisionId', ParseUUIDPipe) divisionId: string) {
     return this.positionsService.findByDivision(divisionId);
   }

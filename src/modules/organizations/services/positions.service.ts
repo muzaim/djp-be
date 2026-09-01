@@ -5,7 +5,10 @@ import { Position } from '../entities/position.entity';
 import { OrganizationUnit } from '../entities/organization-unit.entity';
 import { CreatePositionDto } from '../dto/create-position.dto';
 import { UpdatePositionDto } from '../dto/update-position.dto';
-import { PaginationDto, PaginatedResult } from '../../../common/dto/pagination.dto';
+import {
+  PaginationDto,
+  PaginatedResult,
+} from '../../../common/dto/pagination.dto';
 
 @Injectable()
 export class PositionsService {
@@ -84,7 +87,9 @@ export class PositionsService {
     return this.findOne(saved.id);
   }
 
-  async findAll(paginationDto: PaginationDto = new PaginationDto()): Promise<PaginatedResult<any>> {
+  async findAll(
+    paginationDto: PaginationDto = new PaginationDto(),
+  ): Promise<PaginatedResult<any>> {
     const page = paginationDto.page || 1;
     const limit = paginationDto.limit || 10;
     const skip = (page - 1) * limit;
