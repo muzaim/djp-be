@@ -129,12 +129,15 @@ export class UsersService {
       delete userData.password;
     }
 
+    if (userData.positionId !== undefined) {
+      delete (user as any).position; // Clear loaded relation so TypeORM uses updated positionId!
+    }
+
     Object.assign(user, userData);
     await this.usersRepository.save(user);
 
     const roleInputs = roleIds !== undefined ? roleIds : roles;
     if (roleInputs !== undefined) {
-      // Clear existing roles for this user
       await this.userRoleRepository.delete({ userId: user.id });
 
       if (roleInputs.length > 0) {
@@ -159,6 +162,7 @@ export class UsersService {
 
   async remove(id: string): Promise<void> {
     const user = await this.findOne(id);
+    await this.userRoleRepository.delete({ userId: user.id });
     await this.usersRepository.softRemove(user);
   }
 }
