@@ -24,7 +24,9 @@ export class UsersService {
 
   public transformUser(user: User) {
     const orgUnit = user.position?.organizationUnit || null;
-    const divisionName = this.findDivisionName(orgUnit);
+    const division = this.findDivision(orgUnit);
+    const roleIds = user.userRoles ? user.userRoles.map((ur) => ur.roleId).filter(Boolean) : [];
+    const roleCodes = user.userRoles ? user.userRoles.map((ur) => ur.role?.code).filter(Boolean) : [];
 
     return {
       id: user.id,
@@ -37,22 +39,54 @@ export class UsersService {
         ? {
             id: user.position.id,
             title: user.position.title,
-            jobLevel: user.position.jobLevel ? user.position.jobLevel.name : null,
-            organizationUnit: orgUnit ? orgUnit.name : null,
-            division: divisionName,
+            organizationUnitId: user.position.organizationUnitId,
+            organizationUnit: orgUnit
+              ? {
+                  id: orgUnit.id,
+                  code: orgUnit.code,
+                  name: orgUnit.name,
+                  levelType: orgUnit.levelType,
+                  parentId: orgUnit.parentId,
+                  parent: orgUnit.parent
+                    ? {
+                        id: orgUnit.parent.id,
+                        code: orgUnit.parent.code,
+                        name: orgUnit.parent.name,
+                        levelType: orgUnit.parent.levelType,
+                      }
+                    : null,
+                }
+              : null,
+            division: division,
+            jobLevelId: user.position.jobLevelId,
+            jobLevel: user.position.jobLevel
+              ? {
+                  id: user.position.jobLevel.id,
+                  code: user.position.jobLevel.code,
+                  name: user.position.jobLevel.name,
+                  rankWeight: user.position.jobLevel.rankWeight,
+                }
+              : null,
+            parentPositionId: user.position.parentPositionId,
           }
         : null,
-      roles: user.userRoles ? user.userRoles.map((ur) => ur.role?.code).filter(Boolean) : [],
+      roleIds: roleIds,
+      roles: roleCodes,
+      userRoles: user.userRoles || [],
       createdAt: user.createdAt,
       updatedAt: user.updatedAt,
     };
   }
 
-  private findDivisionName(unit: any): string | null {
+  private findDivision(unit: any): any {
     let curr = unit;
     while (curr) {
       if (curr.levelType === 'DIVISION') {
-        return curr.name;
+        return {
+          id: curr.id,
+          code: curr.code,
+          name: curr.name,
+        };
       }
       curr = curr.parent;
     }
