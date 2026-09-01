@@ -3,6 +3,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { ConfigService } from '@nestjs/config';
 import { Like, Repository } from 'typeorm';
 import { User } from './entities/user.entity';
+import { UserRole } from '../roles/entities/user-role.entity';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
 import { PaginationDto, PaginatedResult } from '../../common/dto/pagination.dto';
@@ -13,15 +14,27 @@ export class UsersService {
   constructor(
     @InjectRepository(User)
     private readonly usersRepository: Repository<User>,
+    @InjectRepository(UserRole)
+    private readonly userRoleRepository: Repository<UserRole>,
     private readonly configService: ConfigService,
   ) {}
 
   async create(createUserDto: CreateUserDto): Promise<User> {
+    const { roleIds, ...userData } = createUserDto;
     const defaultPassword = this.configService.get<string>('DEFAULT_USER_PASSWORD') || '12345';
-    const rawPassword = createUserDto.password || defaultPassword;
-    createUserDto.password = await bcrypt.hash(rawPassword, 10);
-    const user = this.usersRepository.create(createUserDto);
-    return this.usersRepository.save(user);
+    const rawPassword = userData.password || defaultPassword;
+    userData.password = await bcrypt.hash(rawPassword, 10);
+
+    const user = await this.usersRepository.save(this.usersRepository.create(userData));
+
+    if (roleIds && roleIds.length > 0) {
+      const userRoles = roleIds.map((roleId) =>
+        this.userRoleRepository.create({ userId: user.id, roleId }),
+      );
+      await this.userRoleRepository.save(userRoles);
+    }
+
+    return this.findOne(user.id);
   }
 
   async findAll(paginationDto: PaginationDto = new PaginationDto()): Promise<PaginatedResult<User>> {
@@ -95,13 +108,32 @@ export class UsersService {
 
   async update(id: string, updateUserDto: UpdateUserDto): Promise<User> {
     const user = await this.findOne(id);
-    if (updateUserDto.password && updateUserDto.password.trim() !== '') {
-      updateUserDto.password = await bcrypt.hash(updateUserDto.password, 10);
+    const { roleIds, ...userData } = updateUserDto;
+
+    if (userData.password && userData.password.trim() !== '') {
+      userData.password = await bcrypt.hash(userData.password, 10);
     } else {
-      delete updateUserDto.password;
+      delete userData.password;
     }
-    Object.assign(user, updateUserDto);
-    return this.usersRepository.save(user);
+
+    Object.assign(user, userData);
+    await this.usersRepository.save(user);
+
+    if (roleIds !== undefined) {
+      // Soft remove existing roles
+      if (user.userRoles && user.userRoles.length > 0) {
+        await this.userRoleRepository.softRemove(user.userRoles);
+      }
+
+      if (roleIds.length > 0) {
+        const newUserRoles = roleIds.map((roleId) =>
+          this.userRoleRepository.create({ userId: user.id, roleId }),
+        );
+        await this.userRoleRepository.save(newUserRoles);
+      }
+    }
+
+    return this.findOne(id);
   }
 
   async resetPassword(id: string): Promise<{ message: string }> {

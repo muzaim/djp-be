@@ -15,7 +15,6 @@ import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { RolesService } from './roles.service';
 import { CreateRoleDto } from './dto/create-role.dto';
 import { UpdateRoleDto } from './dto/update-role.dto';
-import { AssignRoleDto } from './dto/assign-role.dto';
 import { PaginationDto } from '../../common/dto/pagination.dto';
 
 @ApiBearerAuth()
@@ -62,20 +61,5 @@ export class RolesController {
   @ApiOperation({ summary: 'Hapus (soft delete) role' })
   remove(@Param('id', ParseUUIDPipe) id: string) {
     return this.rolesService.remove(id);
-  }
-
-  @Post('assign')
-  @ApiOperation({ summary: 'Assign role ke user' })
-  assignRole(@Body() assignDto: AssignRoleDto) {
-    return this.rolesService.assignRole(assignDto);
-  }
-
-  @Delete('user-roles/:userId/:roleId')
-  @ApiOperation({ summary: 'Revoke role dari user' })
-  revokeRole(
-    @Param('userId', ParseUUIDPipe) userId: string,
-    @Param('roleId', ParseUUIDPipe) roleId: string,
-  ) {
-    return this.rolesService.revokeRole(userId, roleId);
   }
 }
