@@ -7,110 +7,521 @@ import { UserRole } from './roles/entities/user-role.entity';
 import { User } from './users/entities/user.entity';
 import * as bcrypt from 'bcrypt';
 
+const ORG_TREE = [
+  {
+    name: 'Direktur Utama',
+    orgName: 'Direktorat Utama',
+    orgType: 'DIRECTORATE',
+    jobCode: 'DIR',
+    children: [
+      {
+        name: 'Kepala Satuan Pengawasan Intern',
+        orgName: 'Satuan Pengawasan Intern',
+        orgType: 'DIVISION',
+        jobCode: 'KADIV',
+        children: [
+          {
+            name: 'Kepala Bagian Auditor',
+            orgName: 'Auditor',
+            orgType: 'DEPARTMENT',
+            jobCode: 'KABAG',
+            children: [],
+          },
+          {
+            name: 'Kepala Bagian Quality Assurance & Improvement Management',
+            orgName: 'Quality Assurance & Improvement Management',
+            orgType: 'DEPARTMENT',
+            jobCode: 'KABAG',
+            children: [],
+          },
+        ],
+      },
+      {
+        name: 'Kepala Sekretariat Perusahaan',
+        orgName: 'Sekretariat Perusahaan',
+        orgType: 'DIVISION',
+        jobCode: 'KADIV',
+        children: [
+          {
+            name: 'Kepala Bagian Komunikasi Perusahaan dan Hub Pemangku Kepentingan',
+            orgName: 'Komunikasi Perusahaan dan Hub Pemangku Kepentingan',
+            orgType: 'DEPARTMENT',
+            jobCode: 'KABAG',
+            children: [],
+          },
+          {
+            name: 'Kepala Bagian TJSL & Pengembangan Komunitas',
+            orgName: 'TJSL & Pengembangan Komunitas',
+            orgType: 'DEPARTMENT',
+            jobCode: 'KABAG',
+            children: [],
+          },
+          {
+            name: 'Kepala Bagian EBA Ritel',
+            orgName: 'EBA Ritel',
+            orgType: 'DEPARTMENT',
+            jobCode: 'KABAG',
+            children: [],
+          },
+        ],
+      },
+      {
+        name: 'Kepala Divisi Strategi & Pengembangan Korporasi',
+        orgName: 'Divisi Strategi & Pengembangan Korporasi',
+        orgType: 'DIVISION',
+        jobCode: 'KADIV',
+        children: [
+          {
+            name: 'Kepala Bagian Perencanaan Strategis dan ESG',
+            orgName: 'Perencanaan Strategis dan ESG',
+            orgType: 'DEPARTMENT',
+            jobCode: 'KABAG',
+            children: [],
+          },
+          {
+            name: 'Kepala Bagian Manajemen Proyek dan Hubungan Internasional',
+            orgName: 'Manajemen Proyek dan Hubungan Internasional',
+            orgType: 'DEPARTMENT',
+            jobCode: 'KABAG',
+            children: [],
+          },
+        ],
+      },
+      {
+        name: 'Kepala Divisi Riset Ekonomi',
+        orgName: 'Divisi Riset Ekonomi',
+        orgType: 'DIVISION',
+        jobCode: 'KADIV',
+        children: [
+          {
+            name: 'Kepala Bagian Analis',
+            orgName: 'Analis',
+            orgType: 'DEPARTMENT',
+            jobCode: 'KABAG',
+            children: [],
+          },
+        ],
+      },
+    ],
+  },
+  {
+    name: 'Direktur Bisnis',
+    orgName: 'Direktorat Bisnis',
+    orgType: 'DIRECTORATE',
+    jobCode: 'DIR',
+    children: [
+      {
+        name: 'Kepala Divisi Structured Product, Program Khusus dan Hukum',
+        orgName: 'Divisi Structured Product, Program Khusus dan Hukum',
+        orgType: 'DIVISION',
+        jobCode: 'KADIV',
+        children: [
+          {
+            name: 'Kepala Bagian Structured Product & Program Khusus',
+            orgName: 'Structured Product & Program Khusus',
+            orgType: 'DEPARTMENT',
+            jobCode: 'KABAG',
+            children: [],
+          },
+          {
+            name: 'Kepala Bagian Hukum',
+            orgName: 'Hukum',
+            orgType: 'DEPARTMENT',
+            jobCode: 'KABAG',
+            children: [],
+          },
+        ],
+      },
+      {
+        name: 'Kepala Divisi Pembiayaan',
+        orgName: 'Divisi Pembiayaan',
+        orgType: 'DIVISION',
+        jobCode: 'KADIV',
+        children: [
+          {
+            name: 'Kepala Bagian Pembiayaan Grup I',
+            orgName: 'Pembiayaan Grup I',
+            orgType: 'DEPARTMENT',
+            jobCode: 'KABAG',
+            children: [],
+          },
+          {
+            name: 'Kepala Bagian Pembiayaan Grup II',
+            orgName: 'Pembiayaan Grup II',
+            orgType: 'DEPARTMENT',
+            jobCode: 'KABAG',
+            children: [],
+          },
+        ],
+      },
+      {
+        name: 'Kepala Unit Usaha Syariah',
+        orgName: 'Unit Usaha Syariah',
+        orgType: 'DIVISION',
+        jobCode: 'KADIV',
+        children: [
+          {
+            name: 'Kepala Bagian Pembiayaan Syariah',
+            orgName: 'Pembiayaan Syariah',
+            orgType: 'DEPARTMENT',
+            jobCode: 'KABAG',
+            children: [],
+          },
+        ],
+      },
+      {
+        name: 'Kepala Divisi Tresuri dan Hubungan Investor',
+        orgName: 'Divisi Tresuri dan Hubungan Investor',
+        orgType: 'DIVISION',
+        jobCode: 'KADIV',
+        children: [
+          {
+            name: 'Kepala Bagian Manajemen Pendanaan dan Hubungan Investor',
+            orgName: 'Manajemen Pendanaan dan Hubungan Investor',
+            orgType: 'DEPARTMENT',
+            jobCode: 'KABAG',
+            children: [],
+          },
+          {
+            name: 'Kepala Bagian Manajemen Kas dan Likuiditas',
+            orgName: 'Manajemen Kas dan Likuiditas',
+            orgType: 'DEPARTMENT',
+            jobCode: 'KABAG',
+            children: [],
+          },
+        ],
+      },
+      {
+        name: 'Kepala Divisi Manajemen Kredit',
+        orgName: 'Divisi Manajemen Kredit',
+        orgType: 'DIVISION',
+        jobCode: 'KADIV',
+        children: [
+          {
+            name: 'Kepala Bagian Operasional Kredit',
+            orgName: 'Operasional Kredit',
+            orgType: 'DEPARTMENT',
+            jobCode: 'KABAG',
+            children: [],
+          },
+          {
+            name: 'Kepala Bagian Pengembangan Produk',
+            orgName: 'Pengembangan Produk',
+            orgType: 'DEPARTMENT',
+            jobCode: 'KABAG',
+            children: [],
+          },
+        ],
+      },
+    ],
+  },
+  {
+    name: 'Direktur Keuangan & Manajemen Risiko',
+    orgName: 'Direktorat Keuangan & Manajemen Risiko',
+    orgType: 'DIRECTORATE',
+    jobCode: 'DIR',
+    children: [
+      {
+        name: 'Kepala Divisi Keuangan dan Penyelesaian Transaksi',
+        orgName: 'Divisi Keuangan dan Penyelesaian Transaksi',
+        orgType: 'DIVISION',
+        jobCode: 'KADIV',
+        children: [
+          {
+            name: 'Kepala Bagian Anggaran & Penyelesaian Transaksi',
+            orgName: 'Anggaran & Penyelesaian Transaksi',
+            orgType: 'DEPARTMENT',
+            jobCode: 'KABAG',
+            children: [],
+          },
+          {
+            name: 'Kepala Bagian Akuntansi & Pelaporan',
+            orgName: 'Akuntansi & Pelaporan',
+            orgType: 'DEPARTMENT',
+            jobCode: 'KABAG',
+            children: [],
+          },
+        ],
+      },
+      {
+        name: 'Kepala Divisi Manajemen Risiko dan Kepatuhan',
+        orgName: 'Divisi Manajemen Risiko dan Kepatuhan',
+        orgType: 'DIVISION',
+        jobCode: 'KADIV',
+        children: [
+          {
+            name: 'Kepala Bagian Manajemen Risiko',
+            orgName: 'Manajemen Risiko',
+            orgType: 'DEPARTMENT',
+            jobCode: 'KABAG',
+            children: [],
+          },
+          {
+            name: 'Kepala Bagian Kepatuhan',
+            orgName: 'Kepatuhan',
+            orgType: 'DEPARTMENT',
+            jobCode: 'KABAG',
+            children: [],
+          },
+        ],
+      },
+      {
+        name: 'Kepala Divisi Sumber Daya Manusia',
+        orgName: 'Divisi Sumber Daya Manusia',
+        orgType: 'DIVISION',
+        jobCode: 'KADIV',
+        children: [
+          {
+            name: 'Kepala Bagian Human Capital Strategic',
+            orgName: 'Human Capital Strategic',
+            orgType: 'DEPARTMENT',
+            jobCode: 'KABAG',
+            children: [],
+          },
+          {
+            name: 'Kepala Bagian Layanan SDM',
+            orgName: 'Layanan SDM',
+            orgType: 'DEPARTMENT',
+            jobCode: 'KABAG',
+            children: [],
+          },
+        ],
+      },
+      {
+        name: 'Kepala Divisi Teknologi Informasi',
+        orgName: 'Divisi Teknologi Informasi',
+        orgType: 'DIVISION',
+        jobCode: 'KADIV',
+        children: [
+          {
+            name: 'Kepala Bagian Perencanaan & Pengembangan',
+            orgName: 'Perencanaan & Pengembangan TI',
+            orgType: 'DEPARTMENT',
+            jobCode: 'KABAG',
+            children: [
+              {
+                name: 'Staff Pengembangan Sistem Aplikasi',
+                orgName: 'Pengembangan Sistem Aplikasi',
+                orgType: 'SECTION',
+                jobCode: 'STAFF',
+                children: [],
+              },
+            ],
+          },
+          {
+            name: 'Kepala Bagian Infrastruktur dan Keamanan',
+            orgName: 'Infrastruktur dan Keamanan TI',
+            orgType: 'DEPARTMENT',
+            jobCode: 'KABAG',
+            children: [],
+          },
+          {
+            name: 'Kepala Bagian Strategi & Arsitektur TI',
+            orgName: 'Strategi & Arsitektur TI',
+            orgType: 'DEPARTMENT',
+            jobCode: 'KABAG',
+            children: [],
+          },
+        ],
+      },
+      {
+        name: 'Kepala Divisi Pengadaan dan Manajemen Aset',
+        orgName: 'Divisi Pengadaan dan Manajemen Aset',
+        orgType: 'DIVISION',
+        jobCode: 'KADIV',
+        children: [
+          {
+            name: 'Kepala Bagian Pengadaan',
+            orgName: 'Pengadaan',
+            orgType: 'DEPARTMENT',
+            jobCode: 'KABAG',
+            children: [],
+          },
+          {
+            name: 'Kepala Bagian Manajemen Aset',
+            orgName: 'Manajemen Aset',
+            orgType: 'DEPARTMENT',
+            jobCode: 'KABAG',
+            children: [],
+          },
+        ],
+      },
+    ],
+  },
+];
+
+// Helper to convert string to code slug
+const slugify = (text: string) =>
+  text
+    .toUpperCase()
+    .replace(/\s+/g, '_')
+    .replace(/[^A-Z0-9_]/g, '');
+
 async function seed() {
   await AppDataSource.initialize();
-  console.log('Database connected. Starting seed...');
+  console.log('Database connected. Starting massive organization seed...');
 
   try {
-    // 1. Setup Job Levels
     const jobLevelRepo = AppDataSource.getRepository(JobLevel);
-    
-    let lvlDirector = await jobLevelRepo.findOneBy({ code: 'DIR' });
-    if (!lvlDirector) {
-      lvlDirector = jobLevelRepo.create({ code: 'DIR', name: 'Direktur', rankWeight: 10 });
-      await jobLevelRepo.save(lvlDirector);
-    }
-
-    let lvlDivHead = await jobLevelRepo.findOneBy({ code: 'KADIV' });
-    if (!lvlDivHead) {
-      lvlDivHead = jobLevelRepo.create({ code: 'KADIV', name: 'Kepala Divisi', rankWeight: 20 });
-      await jobLevelRepo.save(lvlDivHead);
-    }
-
-    let lvlDeptHead = await jobLevelRepo.findOneBy({ code: 'KABAG' });
-    if (!lvlDeptHead) {
-      lvlDeptHead = jobLevelRepo.create({ code: 'KABAG', name: 'Kepala Bagian', rankWeight: 30 });
-      await jobLevelRepo.save(lvlDeptHead);
-    }
-
-    let lvlStaff = await jobLevelRepo.findOneBy({ code: 'STAFF' });
-    if (!lvlStaff) {
-      lvlStaff = jobLevelRepo.create({ code: 'STAFF', name: 'Staff', rankWeight: 40 });
-      await jobLevelRepo.save(lvlStaff);
-    }
-
-    // 2. Setup Organization Units
     const orgRepo = AppDataSource.getRepository(OrganizationUnit);
-    
+    const posRepo = AppDataSource.getRepository(Position);
+    const roleRepo = AppDataSource.getRepository(Role);
+    const userRepo = AppDataSource.getRepository(User);
+    const userRoleRepo = AppDataSource.getRepository(UserRole);
+
+    // 1. Ensure Job Levels exist
+    const levels = [
+      { code: 'DIR', name: 'Direktur', weight: 10 },
+      { code: 'KADIV', name: 'Kepala Divisi', weight: 20 },
+      { code: 'KABAG', name: 'Kepala Bagian', weight: 30 },
+      { code: 'STAFF', name: 'Staff', weight: 40 },
+    ];
+
+    for (const lvl of levels) {
+      let jl = await jobLevelRepo.findOneBy({ code: lvl.code });
+      if (!jl) {
+        jl = jobLevelRepo.create({
+          code: lvl.code,
+          name: lvl.name,
+          rankWeight: lvl.weight,
+        });
+        await jobLevelRepo.save(jl);
+      }
+    }
+    const allJobLevels = await jobLevelRepo.find();
+
+    // 2. Company Root
     let orgCompany = await orgRepo.findOneBy({ code: 'SMF' });
     if (!orgCompany) {
-      orgCompany = orgRepo.create({ code: 'SMF', name: 'PT Sarana Multigriya Finansial (Persero)', levelType: 'COMPANY' });
+      orgCompany = orgRepo.create({
+        code: 'SMF',
+        name: 'PT Sarana Multigriya Finansial (Persero)',
+        levelType: 'COMPANY',
+      });
       await orgRepo.save(orgCompany);
     }
 
-    let orgDirKeu = await orgRepo.findOneBy({ code: 'DIR-KEU-MR' });
-    if (!orgDirKeu) {
-      orgDirKeu = orgRepo.create({ code: 'DIR-KEU-MR', name: 'Direktorat Keuangan & Manajemen Risiko', levelType: 'DIRECTORATE', parent: orgCompany });
-      await orgRepo.save(orgDirKeu);
-    }
-
-    let orgDivTI = await orgRepo.findOneBy({ code: 'DIV-TI' });
-    if (!orgDivTI) {
-      orgDivTI = orgRepo.create({ code: 'DIV-TI', name: 'Divisi Teknologi Informasi', levelType: 'DIVISION', parent: orgDirKeu });
-      await orgRepo.save(orgDivTI);
-    }
-
-    let orgDeptPerencanaan = await orgRepo.findOneBy({ code: 'DEPT-PERENCANAAN-TI' });
-    if (!orgDeptPerencanaan) {
-      orgDeptPerencanaan = orgRepo.create({ code: 'DEPT-PERENCANAAN-TI', name: 'Perencanaan & Pengembangan', levelType: 'DEPARTMENT', parent: orgDivTI });
-      await orgRepo.save(orgDeptPerencanaan);
-    }
-
-    // 3. Setup Positions
-    const posRepo = AppDataSource.getRepository(Position);
-    
-    let posDirut = await posRepo.findOne({ where: { title: 'Direktur Utama' } });
+    let posDirut = await posRepo.findOne({
+      where: { title: 'Direktur Utama' },
+    });
     if (!posDirut) {
-      posDirut = posRepo.create({ title: 'Direktur Utama', organizationUnit: orgCompany, jobLevel: lvlDirector });
+      posDirut = posRepo.create({
+        title: 'Direktur Utama',
+        organizationUnit: orgCompany,
+        jobLevel: allJobLevels.find((j) => j.code === 'DIR'),
+      });
       await posRepo.save(posDirut);
     }
 
-    let posDirKeu = await posRepo.findOne({ where: { title: 'Direktur Keuangan & Manajemen Risiko' } });
-    if (!posDirKeu) {
-      posDirKeu = posRepo.create({ title: 'Direktur Keuangan & Manajemen Risiko', organizationUnit: orgDirKeu, jobLevel: lvlDirector, parentPosition: posDirut });
-      await posRepo.save(posDirKeu);
+    // 3. Recursive Builder Function
+    async function buildOrgTree(
+      nodes: any[],
+      parentOrg: OrganizationUnit,
+      parentPos: Position,
+    ) {
+      for (const node of nodes) {
+        // Find or create Org Unit
+        const code = slugify(node.orgName).substring(0, 50); // limit code length
+        let org = await orgRepo.findOneBy({ code: code });
+        if (!org) {
+          org = orgRepo.create({
+            code: code,
+            name: node.orgName,
+            levelType: node.orgType,
+            parent: parentOrg,
+          });
+          await orgRepo.save(org);
+        }
+
+        // Find or create Position
+        let pos = await posRepo.findOne({ where: { title: node.name } });
+        if (!pos) {
+          pos = posRepo.create({
+            title: node.name,
+            organizationUnit: org,
+            jobLevel: allJobLevels.find((j) => j.code === node.jobCode),
+            parentPosition: parentPos, // Direct reporting line
+          });
+          await posRepo.save(pos);
+        }
+
+        // Recursively build children
+        if (node.children && node.children.length > 0) {
+          await buildOrgTree(node.children, org, pos);
+        }
+      }
     }
 
-    let posKadivTI = await posRepo.findOne({ where: { title: 'Kepala Divisi Teknologi Informasi' } });
-    if (!posKadivTI) {
-      posKadivTI = posRepo.create({ title: 'Kepala Divisi Teknologi Informasi', organizationUnit: orgDivTI, jobLevel: lvlDivHead, parentPosition: posDirKeu });
-      await posRepo.save(posKadivTI);
-    }
+    // Process the entire tree starting under the Company Root
+    for (const dir of ORG_TREE) {
+      // Special case: Direktur Utama is already handled at the root,
+      // but its children should report to posDirut.
+      if (dir.name === 'Direktur Utama') {
+        await buildOrgTree(dir.children, orgCompany, posDirut);
+      } else {
+        // Find or create Directorate Org Unit
+        const code = slugify(dir.orgName).substring(0, 50);
+        let orgDir = await orgRepo.findOneBy({ code: code });
+        if (!orgDir) {
+          orgDir = orgRepo.create({
+            code: code,
+            name: dir.orgName,
+            levelType: dir.orgType,
+            parent: orgCompany,
+          });
+          await orgRepo.save(orgDir);
+        }
 
-    let posKabagPerencanaan = await posRepo.findOne({ where: { title: 'Kepala Bagian Perencanaan & Pengembangan' } });
-    if (!posKabagPerencanaan) {
-      posKabagPerencanaan = posRepo.create({ title: 'Kepala Bagian Perencanaan & Pengembangan', organizationUnit: orgDeptPerencanaan, jobLevel: lvlDeptHead, parentPosition: posKadivTI });
-      await posRepo.save(posKabagPerencanaan);
-    }
+        // Find or create Directorate Position
+        let posDir = await posRepo.findOne({ where: { title: dir.name } });
+        if (!posDir) {
+          posDir = posRepo.create({
+            title: dir.name,
+            organizationUnit: orgDir,
+            jobLevel: allJobLevels.find((j) => j.code === dir.jobCode),
+            parentPosition: posDirut,
+          });
+          await posRepo.save(posDir);
+        }
 
-    let posStaffAppDev = await posRepo.findOne({ where: { title: 'Staff Pengembangan Sistem Aplikasi' } });
-    if (!posStaffAppDev) {
-      posStaffAppDev = posRepo.create({ title: 'Staff Pengembangan Sistem Aplikasi', organizationUnit: orgDeptPerencanaan, jobLevel: lvlStaff, parentPosition: posKabagPerencanaan });
-      await posRepo.save(posStaffAppDev);
+        // Process divisions under this directorate
+        if (dir.children && dir.children.length > 0) {
+          await buildOrgTree(dir.children, orgDir, posDir);
+        }
+      }
     }
 
     // 4. Setup Roles
-    const roleRepo = AppDataSource.getRepository(Role);
     let roleStaff = await roleRepo.findOneBy({ code: 'STAFF' });
     if (!roleStaff) {
-      roleStaff = roleRepo.create({ code: 'STAFF', name: 'Staff Umum', description: 'Role dasar untuk semua staff' });
+      roleStaff = roleRepo.create({
+        code: 'STAFF',
+        name: 'Staff Umum',
+        description: 'Role dasar untuk semua staff',
+      });
       await roleRepo.save(roleStaff);
     }
 
+    let roleKabag = await roleRepo.findOneBy({ code: 'KABAG' });
+    if (!roleKabag) {
+      roleKabag = roleRepo.create({
+        code: 'KABAG',
+        name: 'Kepala Bagian',
+        description: 'Role Kepala Bagian',
+      });
+      await roleRepo.save(roleKabag);
+    }
+
     // 5. Setup User "Syafri"
-    const userRepo = AppDataSource.getRepository(User);
-    const userRoleRepo = AppDataSource.getRepository(UserRole);
-    
+    const targetPos = await posRepo.findOne({
+      where: { title: 'Staff Pengembangan Sistem Aplikasi' },
+    });
+    if (!targetPos) {
+      throw new Error(
+        'Target position for Syafri not found! Something went wrong in tree building.',
+      );
+    }
+
     let syafri = await userRepo.findOneBy({ email: 'syafri@smf.co.id' });
     if (!syafri) {
       const hashedPassword = await bcrypt.hash('12345', 10);
@@ -118,7 +529,7 @@ async function seed() {
         email: 'syafri@smf.co.id',
         name: 'Syafri Surya',
         password: hashedPassword,
-        position: posStaffAppDev,
+        position: targetPos,
         isActive: true,
       });
       await userRepo.save(syafri);
@@ -126,13 +537,17 @@ async function seed() {
       // Assign role to Syafri
       const userRole = userRoleRepo.create({ user: syafri, role: roleStaff });
       await userRoleRepo.save(userRole);
-      
+
       console.log('User Syafri successfully created with password 12345');
     } else {
-      console.log('User Syafri already exists.');
+      console.log('User Syafri already exists. Ensuring position is correct.');
+      syafri.position = targetPos;
+      await userRepo.save(syafri);
     }
 
-    console.log('Seeding completed successfully!');
+    console.log(
+      'Massive Seeding of Entire PT SMF Organizational Structure completed successfully!',
+    );
   } catch (error) {
     console.error('Error during seeding:', error);
   } finally {
