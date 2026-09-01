@@ -42,6 +42,12 @@ export class PositionsController {
     return this.positionsService.findAll(paginationDto);
   }
 
+  @Get('by-division/:divisionId')
+  @ApiOperation({ summary: 'Ambil daftar posisi jabatan / fungsi berdasarkan ID Divisi' })
+  findByDivision(@Param('divisionId', ParseUUIDPipe) divisionId: string) {
+    return this.positionsService.findByDivision(divisionId);
+  }
+
   @Get(':id')
   @ApiOperation({ summary: 'Ambil detail posisi jabatan berdasarkan ID' })
   findOne(@Param('id', ParseUUIDPipe) id: string) {

@@ -1,7 +1,8 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Like, Repository } from 'typeorm';
+import { In, Like, Repository } from 'typeorm';
 import { Position } from '../entities/position.entity';
+import { OrganizationUnit } from '../entities/organization-unit.entity';
 import { CreatePositionDto } from '../dto/create-position.dto';
 import { UpdatePositionDto } from '../dto/update-position.dto';
 import { PaginationDto, PaginatedResult } from '../../../common/dto/pagination.dto';
@@ -11,6 +12,8 @@ export class PositionsService {
   constructor(
     @InjectRepository(Position)
     private readonly positionRepository: Repository<Position>,
+    @InjectRepository(OrganizationUnit)
+    private readonly orgRepository: Repository<OrganizationUnit>,
   ) {}
 
   async create(createDto: CreatePositionDto): Promise<Position> {
@@ -43,6 +46,29 @@ export class PositionsService {
         totalPages: Math.ceil(totalItems / limit),
       },
     };
+  }
+
+  async findByDivision(divisionId: string): Promise<Position[]> {
+    const childUnits = await this.orgRepository
+      .createQueryBuilder('unit')
+      .leftJoin('unit.parent', 'parent')
+      .leftJoin('parent.parent', 'grandparent')
+      .where('unit.id = :divisionId', { divisionId })
+      .orWhere('unit.parentId = :divisionId', { divisionId })
+      .orWhere('parent.parentId = :divisionId', { divisionId })
+      .select(['unit.id'])
+      .getMany();
+
+    const unitIds = childUnits.map((u) => u.id);
+    if (unitIds.length === 0) {
+      return [];
+    }
+
+    return this.positionRepository.find({
+      where: { organizationUnitId: In(unitIds) },
+      relations: ['organizationUnit', 'jobLevel', 'parentPosition'],
+      order: { title: 'ASC' },
+    });
   }
 
   async findOne(id: string): Promise<Position> {
