@@ -1,4 +1,4 @@
-# Makefile for NestJS Boilerplate
+# Makefile for DJP Backend Project
 
 .PHONY: install build start dev lint format test test-e2e
 
@@ -31,8 +31,8 @@ test:
 test-e2e:
 	npm run test:e2e
 
-# TypeORM Database Migrations
-.PHONY: migrate-show migrate-run migrate-revert migrate-generate
+# TypeORM Database Migrations & Seeding
+.PHONY: migrate-show migrate-run migrate-revert migrate-generate seed fresh-db
 
 migrate-show:
 	npm run migration:show
@@ -51,8 +51,11 @@ migrate-generate:
 	fi
 	npm run migration:generate -- src/database/migrations/$(name)
 
-# Database Seeding Placeholder
-.PHONY: seed
+# Database Seeding
 seed:
-	@echo "Database seeding placeholder. Configure your seeding scripts inside package.json first."
-	# npm run seed
+	npm run seed
+
+# Run Migrations and Seed Database Fresh
+fresh-db:
+	npm run migration:run
+	npm run seed
