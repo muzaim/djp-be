@@ -22,6 +22,43 @@ export class UsersService {
     private readonly configService: ConfigService,
   ) {}
 
+  public transformUser(user: User) {
+    const orgUnit = user.position?.organizationUnit || null;
+    const divisionName = this.findDivisionName(orgUnit);
+
+    return {
+      id: user.id,
+      name: user.name,
+      email: user.email,
+      phoneNumber: user.phoneNumber,
+      isActive: user.isActive,
+      positionId: user.positionId,
+      position: user.position
+        ? {
+            id: user.position.id,
+            title: user.position.title,
+            jobLevel: user.position.jobLevel ? user.position.jobLevel.name : null,
+            organizationUnit: orgUnit ? orgUnit.name : null,
+            division: divisionName,
+          }
+        : null,
+      roles: user.userRoles ? user.userRoles.map((ur) => ur.role?.code).filter(Boolean) : [],
+      createdAt: user.createdAt,
+      updatedAt: user.updatedAt,
+    };
+  }
+
+  private findDivisionName(unit: any): string | null {
+    let curr = unit;
+    while (curr) {
+      if (curr.levelType === 'DIVISION') {
+        return curr.name;
+      }
+      curr = curr.parent;
+    }
+    return null;
+  }
+
   private async resolveRoleIds(inputs?: string[]): Promise<string[]> {
     if (!inputs || inputs.length === 0) return [];
     const roles = await this.roleRepository.find({
@@ -30,7 +67,7 @@ export class UsersService {
     return roles.map((r) => r.id);
   }
 
-  async create(createUserDto: CreateUserDto): Promise<User> {
+  async create(createUserDto: CreateUserDto) {
     const { roleIds, roles, ...userData } = createUserDto;
     const defaultPassword = this.configService.get<string>('DEFAULT_USER_PASSWORD') || '12345';
     const rawPassword = userData.password || defaultPassword;
@@ -50,7 +87,7 @@ export class UsersService {
     return this.findOne(user.id);
   }
 
-  async findAll(paginationDto: PaginationDto = new PaginationDto()): Promise<PaginatedResult<User>> {
+  async findAll(paginationDto: PaginationDto = new PaginationDto()): Promise<PaginatedResult<any>> {
     const page = paginationDto.page || 1;
     const limit = paginationDto.limit || 10;
     const skip = (page - 1) * limit;
@@ -60,7 +97,7 @@ export class UsersService {
       ? [{ name: Like(`%${search}%`) }, { email: Like(`%${search}%`) }]
       : {};
 
-    const [items, totalItems] = await this.usersRepository.findAndCount({
+    const [rawItems, totalItems] = await this.usersRepository.findAndCount({
       where: whereCondition,
       relations: [
         'position',
@@ -75,6 +112,8 @@ export class UsersService {
       take: limit,
     });
 
+    const items = rawItems.map((user) => this.transformUser(user));
+
     return {
       items,
       meta: {
@@ -86,7 +125,7 @@ export class UsersService {
     };
   }
 
-  async findOne(id: string): Promise<User> {
+  async findOne(id: string) {
     const user = await this.usersRepository.findOne({
       where: { id },
       relations: [
@@ -102,7 +141,7 @@ export class UsersService {
     if (!user) {
       throw new NotFoundException(`User with ID "${id}" not found`);
     }
-    return user;
+    return this.transformUser(user);
   }
 
   async findOneByEmail(email: string): Promise<User | null> {
@@ -119,8 +158,16 @@ export class UsersService {
     });
   }
 
-  async update(id: string, updateUserDto: UpdateUserDto): Promise<User> {
-    const user = await this.findOne(id);
+  async update(id: string, updateUserDto: UpdateUserDto) {
+    const user = await this.usersRepository.findOne({
+      where: { id },
+      relations: ['userRoles'],
+    });
+
+    if (!user) {
+      throw new NotFoundException(`User with ID "${id}" not found`);
+    }
+
     const { roleIds, roles, ...userData } = updateUserDto;
 
     if (userData.password && userData.password.trim() !== '') {
@@ -130,7 +177,7 @@ export class UsersService {
     }
 
     if (userData.positionId !== undefined) {
-      delete (user as any).position; // Clear loaded relation so TypeORM uses updated positionId!
+      delete (user as any).position;
     }
 
     Object.assign(user, userData);
@@ -153,16 +200,22 @@ export class UsersService {
   }
 
   async resetPassword(id: string): Promise<{ message: string }> {
-    const user = await this.findOne(id);
+    const rawUser = await this.usersRepository.findOneBy({ id });
+    if (!rawUser) {
+      throw new NotFoundException(`User with ID "${id}" not found`);
+    }
     const defaultPassword = this.configService.get<string>('DEFAULT_USER_PASSWORD') || '12345';
-    user.password = await bcrypt.hash(defaultPassword, 10);
-    await this.usersRepository.save(user);
+    rawUser.password = await bcrypt.hash(defaultPassword, 10);
+    await this.usersRepository.save(rawUser);
     return { message: `Password user berhasil di-reset menjadi ${defaultPassword}` };
   }
 
   async remove(id: string): Promise<void> {
-    const user = await this.findOne(id);
-    await this.userRoleRepository.delete({ userId: user.id });
-    await this.usersRepository.softRemove(user);
+    const rawUser = await this.usersRepository.findOneBy({ id });
+    if (!rawUser) {
+      throw new NotFoundException(`User with ID "${id}" not found`);
+    }
+    await this.userRoleRepository.delete({ userId: rawUser.id });
+    await this.usersRepository.softRemove(rawUser);
   }
 }
