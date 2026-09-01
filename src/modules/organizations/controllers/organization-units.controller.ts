@@ -48,6 +48,12 @@ export class OrganizationUnitsController {
     return this.orgService.findTree();
   }
 
+  @Get('chart')
+  @ApiOperation({ summary: 'Ambil data struktur bagan organisasi lengkap (Company -> Direktorat -> Divisi -> Bagian / Non Bagian -> Fungsi)' })
+  findChart() {
+    return this.orgService.findChart();
+  }
+
   @Get('divisions')
   @ApiOperation({ summary: 'Ambil daftar semua divisi (levelType DIVISION)' })
   findDivisions() {

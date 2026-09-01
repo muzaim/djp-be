@@ -2,6 +2,7 @@ import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Like, Repository } from 'typeorm';
 import { OrganizationUnit } from '../entities/organization-unit.entity';
+import { Position } from '../entities/position.entity';
 import { CreateOrganizationUnitDto } from '../dto/create-organization-unit.dto';
 import { UpdateOrganizationUnitDto } from '../dto/update-organization-unit.dto';
 import { PaginationDto, PaginatedResult } from '../../../common/dto/pagination.dto';
@@ -11,6 +12,8 @@ export class OrganizationUnitsService {
   constructor(
     @InjectRepository(OrganizationUnit)
     private readonly orgRepository: Repository<OrganizationUnit>,
+    @InjectRepository(Position)
+    private readonly posRepository: Repository<Position>,
   ) {}
 
   async create(createDto: CreateOrganizationUnitDto): Promise<OrganizationUnit> {
@@ -53,6 +56,113 @@ export class OrganizationUnitsService {
       relations: ['children', 'children.children', 'children.children.children'],
     });
     return roots;
+  }
+
+  async findChart(): Promise<any[]> {
+    const orgs = await this.orgRepository.find({
+      relations: ['parent', 'children'],
+      order: { name: 'ASC' },
+    });
+
+    const positions = await this.posRepository.find({
+      relations: ['organizationUnit', 'jobLevel'],
+      order: { title: 'ASC' },
+    });
+
+    const posMap = new Map<string, Position[]>();
+    for (const pos of positions) {
+      const unitId = pos.organizationUnitId;
+      if (!posMap.has(unitId)) {
+        posMap.set(unitId, []);
+      }
+      posMap.get(unitId)!.push(pos);
+    }
+
+    const rootOrgs = orgs.filter((o) => !o.parentId);
+
+    const buildNode = (unit: OrganizationUnit): any => {
+      const childOrgs = orgs.filter((o) => o.parentId === unit.id);
+      const unitPositions = posMap.get(unit.id) || [];
+
+      const isDivision = unit.levelType === 'DIVISION';
+      const mappedChildren: any[] = childOrgs.map(buildNode);
+
+      if (isDivision && unitPositions.length > 0) {
+        const nonBagianPositions = unitPositions.filter(
+          (p) => p.jobLevel?.code !== 'KADIV' && !p.title.startsWith('Kepala Divisi'),
+        );
+        const kadivPositions = unitPositions.filter(
+          (p) => p.jobLevel?.code === 'KADIV' || p.title.startsWith('Kepala Divisi'),
+        );
+
+        if (nonBagianPositions.length > 0) {
+          mappedChildren.push({
+            id: `${unit.id}-non-bagian`,
+            code: `${unit.code}_NON_BAGIAN`,
+            name: 'Non Bagian',
+            type: 'NON_BAGIAN',
+            levelType: 'NON_BAGIAN',
+            label: 'Non Bagian',
+            children: nonBagianPositions.map((p) => ({
+              id: p.id,
+              name: p.title,
+              type: 'POSITION',
+              levelType: 'POSITION',
+              label: 'Fungsi / Jabatan',
+              jobLevel: p.jobLevel ? p.jobLevel.name : null,
+              jobLevelCode: p.jobLevel ? p.jobLevel.code : null,
+              children: [],
+            })),
+          });
+        }
+
+        if (kadivPositions.length > 0) {
+          mappedChildren.push(
+            ...kadivPositions.map((p) => ({
+              id: p.id,
+              name: p.title,
+              type: 'POSITION',
+              levelType: 'POSITION',
+              label: 'Kepala Divisi',
+              jobLevel: p.jobLevel ? p.jobLevel.name : null,
+              jobLevelCode: p.jobLevel ? p.jobLevel.code : null,
+              children: [],
+            })),
+          );
+        }
+      } else if (!isDivision && unitPositions.length > 0) {
+        mappedChildren.push(
+          ...unitPositions.map((p) => ({
+            id: p.id,
+            name: p.title,
+            type: 'POSITION',
+            levelType: 'POSITION',
+            label: p.jobLevel?.code === 'KABAG' ? 'Kepala Bagian' : 'Fungsi / Jabatan',
+            jobLevel: p.jobLevel ? p.jobLevel.name : null,
+            jobLevelCode: p.jobLevel ? p.jobLevel.code : null,
+            children: [],
+          })),
+        );
+      }
+
+      let labelName = 'Unit Organisasi';
+      if (unit.levelType === 'COMPANY') labelName = 'Perusahaan';
+      else if (unit.levelType === 'DIRECTORATE') labelName = 'Direktorat';
+      else if (unit.levelType === 'DIVISION') labelName = 'Divisi';
+      else if (unit.levelType === 'DEPARTMENT') labelName = 'Bagian';
+
+      return {
+        id: unit.id,
+        code: unit.code,
+        name: unit.name,
+        type: unit.levelType,
+        levelType: unit.levelType,
+        label: labelName,
+        children: mappedChildren,
+      };
+    };
+
+    return rootOrgs.map(buildNode);
   }
 
   async findDivisions(): Promise<OrganizationUnit[]> {
