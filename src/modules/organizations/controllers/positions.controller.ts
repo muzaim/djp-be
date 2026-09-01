@@ -7,11 +7,15 @@ import {
   Param,
   Delete,
   ParseUUIDPipe,
+  Query,
+  HttpCode,
+  HttpStatus,
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { PositionsService } from '../services/positions.service';
 import { CreatePositionDto } from '../dto/create-position.dto';
 import { UpdatePositionDto } from '../dto/update-position.dto';
+import { PaginationDto } from '../../../common/dto/pagination.dto';
 
 @ApiBearerAuth()
 @ApiTags('Positions')
@@ -25,10 +29,17 @@ export class PositionsController {
     return this.positionsService.create(createDto);
   }
 
+  @Post('list')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Ambil daftar posisi jabatan dengan pagination (via Body)' })
+  findAllPost(@Body() paginationDto: PaginationDto) {
+    return this.positionsService.findAll(paginationDto);
+  }
+
   @Get()
-  @ApiOperation({ summary: 'Ambil daftar semua posisi jabatan' })
-  findAll() {
-    return this.positionsService.findAll();
+  @ApiOperation({ summary: 'Ambil daftar posisi jabatan dengan pagination (via Query)' })
+  findAll(@Query() paginationDto: PaginationDto) {
+    return this.positionsService.findAll(paginationDto);
   }
 
   @Get(':id')

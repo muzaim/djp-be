@@ -42,6 +42,9 @@ export class AuthService {
   }
 
   transformProfile(user: User) {
+    const orgUnit = user.position?.organizationUnit || null;
+    const divisionName = this.findDivisionName(orgUnit);
+
     return {
       id: user.id,
       name: user.name,
@@ -53,10 +56,22 @@ export class AuthService {
             id: user.position.id,
             title: user.position.title,
             jobLevel: user.position.jobLevel ? user.position.jobLevel.name : null,
-            organizationUnit: user.position.organizationUnit ? user.position.organizationUnit.name : null,
+            organizationUnit: orgUnit ? orgUnit.name : null,
+            division: divisionName,
           }
         : null,
       roles: user.userRoles ? user.userRoles.map((ur) => ur.role?.code).filter(Boolean) : [],
     };
+  }
+
+  private findDivisionName(unit: any): string | null {
+    let curr = unit;
+    while (curr) {
+      if (curr.levelType === 'DIVISION') {
+        return curr.name;
+      }
+      curr = curr.parent;
+    }
+    return null;
   }
 }

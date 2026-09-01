@@ -7,11 +7,15 @@ import {
   Param,
   Delete,
   ParseUUIDPipe,
+  Query,
+  HttpCode,
+  HttpStatus,
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { JobLevelsService } from '../services/job-levels.service';
 import { CreateJobLevelDto } from '../dto/create-job-level.dto';
 import { UpdateJobLevelDto } from '../dto/update-job-level.dto';
+import { PaginationDto } from '../../../common/dto/pagination.dto';
 
 @ApiBearerAuth()
 @ApiTags('Job Levels')
@@ -25,10 +29,17 @@ export class JobLevelsController {
     return this.jobLevelsService.create(createDto);
   }
 
+  @Post('list')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Ambil daftar job level dengan pagination (via Body)' })
+  findAllPost(@Body() paginationDto: PaginationDto) {
+    return this.jobLevelsService.findAll(paginationDto);
+  }
+
   @Get()
-  @ApiOperation({ summary: 'Ambil daftar semua job level' })
-  findAll() {
-    return this.jobLevelsService.findAll();
+  @ApiOperation({ summary: 'Ambil daftar job level dengan pagination (via Query)' })
+  findAll(@Query() paginationDto: PaginationDto) {
+    return this.jobLevelsService.findAll(paginationDto);
   }
 
   @Get(':id')

@@ -7,11 +7,15 @@ import {
   Param,
   Delete,
   ParseUUIDPipe,
+  Query,
+  HttpCode,
+  HttpStatus,
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { OrganizationUnitsService } from '../services/organization-units.service';
 import { CreateOrganizationUnitDto } from '../dto/create-organization-unit.dto';
 import { UpdateOrganizationUnitDto } from '../dto/update-organization-unit.dto';
+import { PaginationDto } from '../../../common/dto/pagination.dto';
 
 @ApiBearerAuth()
 @ApiTags('Organization Units')
@@ -25,10 +29,17 @@ export class OrganizationUnitsController {
     return this.orgService.create(createDto);
   }
 
+  @Post('list')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Ambil daftar unit organisasi dengan pagination (via Body)' })
+  findAllPost(@Body() paginationDto: PaginationDto) {
+    return this.orgService.findAll(paginationDto);
+  }
+
   @Get()
-  @ApiOperation({ summary: 'Ambil daftar semua unit organisasi' })
-  findAll() {
-    return this.orgService.findAll();
+  @ApiOperation({ summary: 'Ambil daftar unit organisasi dengan pagination (via Query)' })
+  findAll(@Query() paginationDto: PaginationDto) {
+    return this.orgService.findAll(paginationDto);
   }
 
   @Get('tree')

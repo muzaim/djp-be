@@ -7,12 +7,16 @@ import {
   Param,
   Delete,
   ParseUUIDPipe,
+  Query,
+  HttpCode,
+  HttpStatus,
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { RolesService } from './roles.service';
 import { CreateRoleDto } from './dto/create-role.dto';
 import { UpdateRoleDto } from './dto/update-role.dto';
 import { AssignRoleDto } from './dto/assign-role.dto';
+import { PaginationDto } from '../../common/dto/pagination.dto';
 
 @ApiBearerAuth()
 @ApiTags('Roles')
@@ -26,10 +30,17 @@ export class RolesController {
     return this.rolesService.create(createDto);
   }
 
+  @Post('list')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Ambil daftar role dengan pagination (via Body)' })
+  findAllPost(@Body() paginationDto: PaginationDto) {
+    return this.rolesService.findAll(paginationDto);
+  }
+
   @Get()
-  @ApiOperation({ summary: 'Ambil daftar semua role' })
-  findAll() {
-    return this.rolesService.findAll();
+  @ApiOperation({ summary: 'Ambil daftar role dengan pagination (via Query)' })
+  findAll(@Query() paginationDto: PaginationDto) {
+    return this.rolesService.findAll(paginationDto);
   }
 
   @Get(':id')

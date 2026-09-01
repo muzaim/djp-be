@@ -1,9 +1,10 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { Like, Repository } from 'typeorm';
 import { Position } from '../entities/position.entity';
 import { CreatePositionDto } from '../dto/create-position.dto';
 import { UpdatePositionDto } from '../dto/update-position.dto';
+import { PaginationDto, PaginatedResult } from '../../../common/dto/pagination.dto';
 
 @Injectable()
 export class PositionsService {
@@ -17,11 +18,31 @@ export class PositionsService {
     return this.positionRepository.save(position);
   }
 
-  async findAll(): Promise<Position[]> {
-    return this.positionRepository.find({
+  async findAll(paginationDto: PaginationDto = new PaginationDto()): Promise<PaginatedResult<Position>> {
+    const page = paginationDto.page || 1;
+    const limit = paginationDto.limit || 10;
+    const skip = (page - 1) * limit;
+    const search = paginationDto.search || '';
+
+    const whereCondition = search ? { title: Like(`%${search}%`) } : {};
+
+    const [items, totalItems] = await this.positionRepository.findAndCount({
+      where: whereCondition,
       relations: ['organizationUnit', 'jobLevel', 'parentPosition'],
       order: { createdAt: 'ASC' },
+      skip,
+      take: limit,
     });
+
+    return {
+      items,
+      meta: {
+        page,
+        limit,
+        totalItems,
+        totalPages: Math.ceil(totalItems / limit),
+      },
+    };
   }
 
   async findOne(id: string): Promise<Position> {

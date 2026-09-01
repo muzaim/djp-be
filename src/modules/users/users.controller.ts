@@ -7,11 +7,15 @@ import {
   Param,
   Delete,
   ParseUUIDPipe,
+  Query,
+  HttpCode,
+  HttpStatus,
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { UsersService } from './users.service';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
+import { PaginationDto } from '../../common/dto/pagination.dto';
 
 @ApiBearerAuth()
 @ApiTags('Users')
@@ -25,10 +29,17 @@ export class UsersController {
     return this.usersService.create(createUserDto);
   }
 
+  @Post('list')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Ambil daftar user dengan pagination (via Body)' })
+  findAllPost(@Body() paginationDto: PaginationDto) {
+    return this.usersService.findAll(paginationDto);
+  }
+
   @Get()
-  @ApiOperation({ summary: 'Ambil daftar semua user' })
-  findAll() {
-    return this.usersService.findAll();
+  @ApiOperation({ summary: 'Ambil daftar user dengan pagination (via Query)' })
+  findAll(@Query() paginationDto: PaginationDto) {
+    return this.usersService.findAll(paginationDto);
   }
 
   @Get(':id')
