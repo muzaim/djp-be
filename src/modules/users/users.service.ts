@@ -93,8 +93,10 @@ export class UsersService {
 
   async update(id: string, updateUserDto: UpdateUserDto): Promise<User> {
     const user = await this.findOne(id);
-    if (updateUserDto.password) {
+    if (updateUserDto.password && updateUserDto.password.trim() !== '') {
       updateUserDto.password = await bcrypt.hash(updateUserDto.password, 10);
+    } else {
+      delete updateUserDto.password;
     }
     Object.assign(user, updateUserDto);
     return this.usersRepository.save(user);
