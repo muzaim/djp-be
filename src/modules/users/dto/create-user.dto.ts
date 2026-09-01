@@ -27,11 +27,17 @@ export class CreateUserDto {
   @IsUUID()
   positionId?: string;
 
-  @ApiPropertyOptional({ example: ['uuid-role-1'], description: 'Daftar ID role yang dimiliki user', type: [String] })
+  @ApiPropertyOptional({ example: ['STAFF', 'KABAG'], description: 'Daftar ID atau Kode role yang dimiliki user', type: [String] })
   @IsOptional()
   @IsArray()
-  @IsUUID('all', { each: true })
+  @IsString({ each: true })
   roleIds?: string[];
+
+  @ApiPropertyOptional({ example: ['STAFF', 'KABAG'], description: 'Alias untuk roleIds (Bisa ID atau Kode Role)', type: [String] })
+  @IsOptional()
+  @IsArray()
+  @IsString({ each: true })
+  roles?: string[];
 
   @ApiPropertyOptional({ example: true, description: 'Status aktif' })
   @IsOptional()
