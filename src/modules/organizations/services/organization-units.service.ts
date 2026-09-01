@@ -71,6 +71,16 @@ export class OrganizationUnitsService {
 
     const posMap = new Map<string, Position[]>();
     for (const pos of positions) {
+      if (
+        pos.jobLevel?.code === 'DIREKTUR' ||
+        pos.jobLevel?.code === 'KADIV' ||
+        pos.jobLevel?.code === 'KABAG' ||
+        pos.title.startsWith('Kepala ') ||
+        pos.title.startsWith('Direktur ') ||
+        pos.title.startsWith('Deputi Direktur ')
+      ) {
+        continue;
+      }
       const unitId = pos.organizationUnitId;
       if (!posMap.has(unitId)) {
         posMap.set(unitId, []);
@@ -84,66 +94,17 @@ export class OrganizationUnitsService {
       const childOrgs = orgs.filter((o) => o.parentId === unit.id);
       const unitPositions = posMap.get(unit.id) || [];
 
-      const isDivision = unit.levelType === 'DIVISION';
-      const mappedChildren: any[] = childOrgs.map(buildNode);
+      const mappedChildOrgs: any[] = childOrgs.map(buildNode);
 
-      if (isDivision && unitPositions.length > 0) {
-        const nonBagianPositions = unitPositions.filter(
-          (p) => p.jobLevel?.code !== 'KADIV' && !p.title.startsWith('Kepala Divisi'),
-        );
-        const kadivPositions = unitPositions.filter(
-          (p) => p.jobLevel?.code === 'KADIV' || p.title.startsWith('Kepala Divisi'),
-        );
-
-        if (nonBagianPositions.length > 0) {
-          mappedChildren.push({
-            id: `${unit.id}-non-bagian`,
-            code: `${unit.code}_NON_BAGIAN`,
-            name: 'Non Bagian',
-            type: 'NON_BAGIAN',
-            levelType: 'NON_BAGIAN',
-            label: 'Non Bagian',
-            children: nonBagianPositions.map((p) => ({
-              id: p.id,
-              name: p.title,
-              type: 'POSITION',
-              levelType: 'POSITION',
-              label: 'Fungsi / Jabatan',
-              jobLevel: p.jobLevel ? p.jobLevel.name : null,
-              jobLevelCode: p.jobLevel ? p.jobLevel.code : null,
-              children: [],
-            })),
-          });
-        }
-
-        if (kadivPositions.length > 0) {
-          mappedChildren.push(
-            ...kadivPositions.map((p) => ({
-              id: p.id,
-              name: p.title,
-              type: 'POSITION',
-              levelType: 'POSITION',
-              label: 'Kepala Divisi',
-              jobLevel: p.jobLevel ? p.jobLevel.name : null,
-              jobLevelCode: p.jobLevel ? p.jobLevel.code : null,
-              children: [],
-            })),
-          );
-        }
-      } else if (!isDivision && unitPositions.length > 0) {
-        mappedChildren.push(
-          ...unitPositions.map((p) => ({
-            id: p.id,
-            name: p.title,
-            type: 'POSITION',
-            levelType: 'POSITION',
-            label: p.jobLevel?.code === 'KABAG' ? 'Kepala Bagian' : 'Fungsi / Jabatan',
-            jobLevel: p.jobLevel ? p.jobLevel.name : null,
-            jobLevelCode: p.jobLevel ? p.jobLevel.code : null,
-            children: [],
-          })),
-        );
-      }
+      const positionNodes = unitPositions.map((p) => ({
+        id: p.id,
+        name: p.title,
+        type: 'POSITION',
+        levelType: 'POSITION',
+        label: 'Fungsi',
+        jobLevel: p.jobLevel ? p.jobLevel.name : null,
+        children: [],
+      }));
 
       let labelName = 'Unit Organisasi';
       if (unit.levelType === 'COMPANY') labelName = 'Perusahaan';
@@ -158,7 +119,7 @@ export class OrganizationUnitsService {
         type: unit.levelType,
         levelType: unit.levelType,
         label: labelName,
-        children: mappedChildren,
+        children: [...mappedChildOrgs, ...positionNodes],
       };
     };
 
