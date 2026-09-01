@@ -7,17 +7,15 @@ import { UserRole } from './roles/entities/user-role.entity';
 import { User } from './users/entities/user.entity';
 import * as bcrypt from 'bcrypt';
 
-const slugify = (text: string) => text.toUpperCase().replace(/\s+/g, '_').replace(/[^A-Z0-9_]/g, '');
-
-async function resetAndSeed() {
+async function resetAndSeedClean() {
   await AppDataSource.initialize();
-  console.log('Database connected. Clearing old org data...');
+  console.log('Database connected. Clearing all data for clean slate...');
 
   const queryRunner = AppDataSource.createQueryRunner();
   await queryRunner.connect();
 
   try {
-    // Disable foreign key checks to truncate/clean tables safely
+    // 1. Reset Database completely
     await queryRunner.query('SET FOREIGN_KEY_CHECKS = 0');
     await queryRunner.query('TRUNCATE TABLE sys_user_roles');
     await queryRunner.query('TRUNCATE TABLE mst_users');
@@ -27,7 +25,7 @@ async function resetAndSeed() {
     await queryRunner.query('TRUNCATE TABLE sys_roles');
     await queryRunner.query('SET FOREIGN_KEY_CHECKS = 1');
 
-    console.log('Tables cleared. Starting fresh seeding based on SK Direksi 2025...');
+    console.log('Database reset clean. Inserting 3 requested divisions...');
 
     const jobLevelRepo = AppDataSource.getRepository(JobLevel);
     const orgRepo = AppDataSource.getRepository(OrganizationUnit);
@@ -36,221 +34,229 @@ async function resetAndSeed() {
     const userRepo = AppDataSource.getRepository(User);
     const userRoleRepo = AppDataSource.getRepository(UserRole);
 
-    // 1. Create Job Levels
-    const levels = [
-      { code: 'DIR', name: 'Direktur', weight: 10 },
-      { code: 'DEPUTY_DIR', name: 'Deputi Direktur', weight: 15 },
-      { code: 'KADIV', name: 'Kepala Divisi', weight: 20 },
-      { code: 'KABAG', name: 'Kepala Bagian', weight: 30 },
-      { code: 'STAFF', name: 'Staff', weight: 40 },
-    ];
-    for (const l of levels) {
-      await jobLevelRepo.save(jobLevelRepo.create({ code: l.code, name: l.name, rankWeight: l.weight }));
-    }
-    const allJobLevels = await jobLevelRepo.find();
-    const getLevel = (code: string) => allJobLevels.find(j => j.code === code)!;
+    // 2. Insert Job Levels
+    const lvlDir = await jobLevelRepo.save(jobLevelRepo.create({ code: 'DIR', name: 'Direktur', rankWeight: 10 }));
+    const lvlKadiv = await jobLevelRepo.save(jobLevelRepo.create({ code: 'KADIV', name: 'Kepala Divisi', rankWeight: 20 }));
+    const lvlKabag = await jobLevelRepo.save(jobLevelRepo.create({ code: 'KABAG', name: 'Kepala Bagian', rankWeight: 30 }));
+    const lvlStaff = await jobLevelRepo.save(jobLevelRepo.create({ code: 'STAFF', name: 'Staff / Fungsi', rankWeight: 40 }));
 
-    // 2. Create Top Level Company & Directorates (4 Directorates / Top Leaders per Page 7)
-    // Root Company
-    const orgCompany = await orgRepo.save(orgRepo.create({ code: 'SMF', name: 'PT Sarana Multigriya Finansial (Persero)', levelType: 'COMPANY' }));
+    // 3. Insert Company Root
+    const orgCompany = await orgRepo.save(orgRepo.create({
+      code: 'SMF',
+      name: 'PT Sarana Multigriya Finansial (Persero)',
+      levelType: 'COMPANY',
+    }));
 
-    // Direktur Utama
-    const orgDirut = await orgRepo.save(orgRepo.create({ code: 'DIRUT', name: 'Direktorat Utama', levelType: 'DIRECTORATE', parent: orgCompany }));
-    const posDirut = await posRepo.save(posRepo.create({ title: 'Direktur Utama', organizationUnit: orgDirut, jobLevel: getLevel('DIR') }));
+    // 4. Insert Directorates
+    // A. Direktorat Utama
+    const orgDirut = await orgRepo.save(orgRepo.create({
+      code: 'DIRUT',
+      name: 'Direktorat Utama',
+      levelType: 'DIRECTORATE',
+      parent: orgCompany,
+    }));
+    const posDirut = await posRepo.save(posRepo.create({
+      title: 'Direktur Utama',
+      organizationUnit: orgDirut,
+      jobLevel: lvlDir,
+    }));
 
-    // Direktur Bisnis
-    const orgDirBisnis = await orgRepo.save(orgRepo.create({ code: 'DIR_BISNIS', name: 'Direktorat Bisnis', levelType: 'DIRECTORATE', parent: orgCompany }));
-    const posDirBisnis = await posRepo.save(posRepo.create({ title: 'Direktur Bisnis', organizationUnit: orgDirBisnis, jobLevel: getLevel('DIR'), parentPosition: posDirut }));
-
-    // Deputi Direktur Pembiayaan dan Syariah (Under Direktur Bisnis)
-    const orgDeputiPembiayaan = await orgRepo.save(orgRepo.create({ code: 'DEPUTI_PEMBIAYAAN_SYARIAH', name: 'Deputi Direktur Pembiayaan dan Syariah', levelType: 'DIRECTORATE', parent: orgDirBisnis }));
-    const posDeputiPembiayaan = await posRepo.save(posRepo.create({ title: 'Deputi Direktur Pembiayaan dan Syariah', organizationUnit: orgDeputiPembiayaan, jobLevel: getLevel('DEPUTY_DIR'), parentPosition: posDirBisnis }));
-
-    // Direktur Keuangan dan Manajemen Risiko
-    const orgDirKeu = await orgRepo.save(orgRepo.create({ code: 'DIR_KEU_MR', name: 'Direktorat Keuangan dan Manajemen Risiko', levelType: 'DIRECTORATE', parent: orgCompany }));
-    const posDirKeu = await posRepo.save(posRepo.create({ title: 'Direktur Keuangan dan Manajemen Risiko', organizationUnit: orgDirKeu, jobLevel: getLevel('DIR'), parentPosition: posDirut }));
-
-    // Helper to add Division, Department, and Staff
-    async function addDivisionTree(
-      divCode: string, 
-      divName: string, 
-      parentOrg: OrganizationUnit, 
-      parentPos: Position,
-      departments: {
-        deptCode: string;
-        deptName: string;
-        kabagTitle: string;
-        staffTitles?: string[];
-      }[] = [],
-      directStaffTitles: string[] = [] // For divisions like SDM without Bagian
-    ) {
-      const divOrg = await orgRepo.save(orgRepo.create({ code: divCode, name: divName, levelType: 'DIVISION', parent: parentOrg }));
-      const kadivTitle = `Kepala ${divName}`;
-      const divPos = await posRepo.save(posRepo.create({ title: kadivTitle, organizationUnit: divOrg, jobLevel: getLevel('KADIV'), parentPosition: parentPos }));
-
-      // Add direct staff under Kadiv if any (e.g. Divisi SDM)
-      for (const staffTitle of directStaffTitles) {
-        await posRepo.save(posRepo.create({ title: staffTitle, organizationUnit: divOrg, jobLevel: getLevel('STAFF'), parentPosition: divPos }));
-      }
-
-      // Add Departments
-      for (const dept of departments) {
-        const deptOrg = await orgRepo.save(orgRepo.create({ code: dept.deptCode, name: dept.deptName, levelType: 'DEPARTMENT', parent: divOrg }));
-        const deptPos = await posRepo.save(posRepo.create({ title: dept.kabagTitle, organizationUnit: deptOrg, jobLevel: getLevel('KABAG'), parentPosition: divPos }));
-
-        if (dept.staffTitles) {
-          for (const staffTitle of dept.staffTitles) {
-            await posRepo.save(posRepo.create({ title: staffTitle, organizationUnit: deptOrg, jobLevel: getLevel('STAFF'), parentPosition: deptPos }));
-          }
-        }
-      }
-      return divPos;
-    }
-
-    // ==========================================
-    // A. UNDER DIREKTORAT UTAMA
-    // ==========================================
-    // 1. Satuan Pengawasan Intern
-    await addDivisionTree('SPI', 'Satuan Pengawasan Intern', orgDirut, posDirut, [
-      { deptCode: 'SPI_AUDITOR', deptName: 'Auditor', kabagTitle: 'Kepala Bagian Auditor', staffTitles: ['Auditor Staff'] },
-      { deptCode: 'SPI_QA', deptName: 'Quality Assurance & Improvement Management', kabagTitle: 'Kepala Bagian Quality Assurance & Improvement Management', staffTitles: ['QA Staff'] },
-    ]);
-
-    // 2. Sekretariat Perusahaan
-    await addDivisionTree('SEKPER', 'Sekretariat Perusahaan', orgDirut, posDirut, [
-      { deptCode: 'SEKPER_KOMUNIKASI', deptName: 'Komunikasi Perusahaan dan Hub Pemangku Kepentingan', kabagTitle: 'Kepala Bagian Komunikasi Perusahaan & Hub Stakeholder', staffTitles: ['Hub Stakeholder & Pelaporan Specialist', 'Manajemen Brand & Aset Digital Specialist', 'Komunikasi Korporasi Specialist'] },
-      { deptCode: 'SEKPER_TJSL', deptName: 'TJSL & Pengembangan Komunitas', kabagTitle: 'Kepala Bagian TJSL & Pengembangan Komunitas', staffTitles: ['Pengembangan Komunitas Specialist', 'TPRK & Homestay Specialist', 'Manajemen Stakeholder Internal Specialist'] },
-      { deptCode: 'SEKPER_EBA', deptName: 'EBA Ritel & Layanan Direksi', kabagTitle: 'Kepala Bagian EBA Ritel & Layanan Direksi', staffTitles: ['EBA Ritel Specialist', 'Executive Assistant', 'Sekretaris Direksi', 'Protokoler & Pengelolaan Arsip'] },
-    ]);
-
-    // 3. Divisi Strategi dan Pengembangan Korporasi
-    await addDivisionTree('DIV_SPK', 'Divisi Strategi dan Pengembangan Korporasi', orgDirut, posDirut, [
-      { deptCode: 'SPK_PERENCANAAN', deptName: 'Perencanaan Strategis dan ESG', kabagTitle: 'Kepala Bagian Perencanaan Strategis & ESG', staffTitles: ['Perencanaan Strategis Specialist', 'ESG & Evaluasi Kinerja Specialist'] },
-      { deptCode: 'SPK_PMO', deptName: 'Manajemen Proyek dan Hubungan Internasional', kabagTitle: 'Kepala Bagian PMO & Hubungan Internasional', staffTitles: ['Manajemen Proyek PMO Specialist', 'Hubungan Internasional Specialist'] },
-    ]);
-
-    // 4. Divisi Riset Ekonomi
-    await addDivisionTree('DIV_RE', 'Divisi Riset Ekonomi', orgDirut, posDirut, [
-      { deptCode: 'RE_ANALIS', deptName: 'Analis Riset Ekonomi', kabagTitle: 'Kepala Bagian Analis Riset Ekonomi', staffTitles: ['Analis Ekonomi Macro Specialist', 'Analis Pembiayaan Perumahan'] },
-    ]);
+    // B. Direktur Keuangan dan Manajemen Risiko
+    const orgDirKeu = await orgRepo.save(orgRepo.create({
+      code: 'DIR_KEU_MR',
+      name: 'Direktur Keuangan dan Manajemen Risiko',
+      levelType: 'DIRECTORATE',
+      parent: orgCompany,
+    }));
+    const posDirKeu = await posRepo.save(posRepo.create({
+      title: 'Direktur Keuangan dan Manajemen Risiko',
+      organizationUnit: orgDirKeu,
+      jobLevel: lvlDir,
+      parentPosition: posDirut,
+    }));
 
 
-    // ==========================================
-    // B. UNDER DIREKTUR BISNIS
-    // ==========================================
-    // 1. Divisi Structured Product, Program Khusus dan Hukum
-    await addDivisionTree('DIV_SPPKH', 'Divisi Structured Product, Program Khusus dan Hukum', orgDirBisnis, posDirBisnis, [
-      { deptCode: 'SPPKH_STRUCTURED', deptName: 'Structured Product & Program Khusus', kabagTitle: 'Kepala Bagian Structured Product & Program Khusus', staffTitles: ['Project Finance Specialist'] },
-      { deptCode: 'SPPKH_HUKUM', deptName: 'Hukum', kabagTitle: 'Kepala Bagian Hukum', staffTitles: ['Hukum Bisnis Specialist', 'Hukum Korporasi Specialist'] },
-    ]);
+    // =========================================================================
+    // CONTOH 1: Divisi Strategi dan Pengembangan Korporasi (Direktorat Utama)
+    // =========================================================================
+    const orgDivSPK = await orgRepo.save(orgRepo.create({
+      code: 'DIV_SPK',
+      name: 'Divisi Strategi dan Pengembangan Korporasi',
+      levelType: 'DIVISION',
+      parent: orgDirut,
+    }));
+    const posKadivSPK = await posRepo.save(posRepo.create({
+      title: 'Kepala Divisi Strategi dan Pengembangan Korporasi',
+      organizationUnit: orgDivSPK,
+      jobLevel: lvlKadiv,
+      parentPosition: posDirut,
+    }));
 
-    // 2. Divisi Tresuri dan Hubungan Investor
-    await addDivisionTree('DIV_TRESURI', 'Divisi Tresuri dan Hubungan Investor', orgDirBisnis, posDirBisnis, [
-      { deptCode: 'TRESURI_PENDANAAN', deptName: 'Manajemen Pendanaan dan Hubungan Investor', kabagTitle: 'Kepala Bagian Manajemen Pendanaan & Investor Relation', staffTitles: ['Manajemen Pendanaan Specialist', 'Hubungan Investor Specialist'] },
-      { deptCode: 'TRESURI_LIKUIDITAS', deptName: 'Manajemen Kas dan Likuiditas', kabagTitle: 'Kepala Bagian Manajemen Kas & Likuiditas', staffTitles: ['Manajemen Kas & Likuiditas Staff'] },
-    ]);
+    // Bagian 1: Perencanaan Strategis dan Enviromental, Sosial dan Governance ESG
+    const orgSPK_Bag1 = await orgRepo.save(orgRepo.create({
+      code: 'SPK_BAG1',
+      name: 'Perencanaan Strategis dan Enviromental, Sosial dan Governance ESG',
+      levelType: 'DEPARTMENT',
+      parent: orgDivSPK,
+    }));
+    const posKabagSPK_1 = await posRepo.save(posRepo.create({
+      title: 'Kepala Bagian Perencanaan Strategis dan ESG',
+      organizationUnit: orgSPK_Bag1,
+      jobLevel: lvlKabag,
+      parentPosition: posKadivSPK,
+    }));
+    // Turunan Bagian 1
+    await posRepo.save(posRepo.create({ title: 'Perencanaan Strategis', organizationUnit: orgSPK_Bag1, jobLevel: lvlStaff, parentPosition: posKabagSPK_1 }));
+    await posRepo.save(posRepo.create({ title: 'ESG dan Evaluasi Kinerja dan Anak Usaha', organizationUnit: orgSPK_Bag1, jobLevel: lvlStaff, parentPosition: posKabagSPK_1 }));
 
-    // 3. Divisi Manajemen Kredit
-    await addDivisionTree('DIV_MK', 'Divisi Manajemen Kredit', orgDirBisnis, posDirBisnis, [
-      { deptCode: 'MK_OPS', deptName: 'Operasional Kredit', kabagTitle: 'Kepala Bagian Operasional Kredit', staffTitles: ['Admin Kredit Specialist', 'Admin Non Kredit Specialist'] },
-      { deptCode: 'MK_PRODUK', deptName: 'Pengembangan Produk', kabagTitle: 'Kepala Bagian Pengembangan Produk', staffTitles: ['Pengembangan Produk Specialist', 'Pelatihan & Pendampingan Specialist', 'Project Officer'] },
-    ]);
-
-
-    // ==========================================
-    // C. UNDER DEPUTI DIREKTUR PEMBIAYAAN DAN SYARIAH
-    // ==========================================
-    // 1. Divisi Pembiayaan
-    await addDivisionTree('DIV_PEMBIAYAAN', 'Divisi Pembiayaan', orgDeputiPembiayaan, posDeputiPembiayaan, [
-      { deptCode: 'PEMBIAYAAN_GRUP_1', deptName: 'Pembiayaan Grup I', kabagTitle: 'Kepala Bagian Pembiayaan Grup I', staffTitles: ['Business Manager I'] },
-      { deptCode: 'PEMBIAYAAN_GRUP_2', deptName: 'Pembiayaan Grup II', kabagTitle: 'Kepala Bagian Pembiayaan Grup II', staffTitles: ['Business Manager II'] },
-    ]);
-
-    // 2. Unit Usaha Syariah
-    await addDivisionTree('UUS', 'Unit Usaha Syariah', orgDeputiPembiayaan, posDeputiPembiayaan, [
-      { deptCode: 'UUS_PEMBIAYAAN', deptName: 'Pembiayaan Syariah', kabagTitle: 'Kepala Bagian Pembiayaan Syariah', staffTitles: ['Business Manager Syariah'] },
-    ]);
-
-
-    // ==========================================
-    // D. UNDER DIREKTUR KEUANGAN DAN MANAJEMEN RISIKO
-    // ==========================================
-    // 1. Divisi Keuangan dan Penyelesaian Transaksi
-    await addDivisionTree('DIV_KEUANGAN', 'Divisi Keuangan dan Penyelesaian Transaksi', orgDirKeu, posDirKeu, [
-      { deptCode: 'KEU_ANGGARAN', deptName: 'Anggaran & Penyelesaian Transaksi', kabagTitle: 'Kepala Bagian Anggaran & Penyelesaian Transaksi', staffTitles: ['Anggaran & Manajemen Keuangan Specialist', 'Pengendalian Anggaran Specialist', 'Penyelesaian Transaksi Bisnis & Operasional Specialist'] },
-      { deptCode: 'KEU_AKUNTANSI', deptName: 'Akuntansi & Pelaporan', kabagTitle: 'Kepala Bagian Akuntansi & Pelaporan', staffTitles: ['Kebijakan Akuntansi Specialist', 'Perpajakan Specialist', 'Pelaporan Keuangan Specialist', 'Pengelolaan Data Keuangan Specialist'] },
-    ]);
-
-    // 2. Divisi Manajemen Risiko dan Kepatuhan
-    await addDivisionTree('DIV_MRK', 'Divisi Manajemen Risiko dan Kepatuhan', orgDirKeu, posDirKeu, [
-      { deptCode: 'MRK_RISIKO', deptName: 'Manajemen Risiko', kabagTitle: 'Kepala Bagian Manajemen Risiko', staffTitles: ['Enterprise Risk Management Specialist', 'Manajemen Risiko Operasional Specialist', 'Manajemen Risiko Bisnis Specialist', 'GCG & Kebijakan Internal Specialist'] },
-      { deptCode: 'MRK_KEPATUHAN', deptName: 'Kepatuhan', kabagTitle: 'Kepala Bagian Kepatuhan', staffTitles: ['Compliance Specialist', 'APU PPT Specialist'] },
-    ]);
-
-    // 3. Divisi Sumber Daya Manusia (TIDAK Memiliki Kepala Bagian per Lampiran 12 - Langsung ke Kadiv)
-    await addDivisionTree('DIV_SDM', 'Divisi Sumber Daya Manusia', orgDirKeu, posDirKeu, [], [
-      'Human Capital Strategic Specialist',
-      'Learning and Talent Development Specialist',
-      'Human Capital Business Partner Specialist',
-      'Layanan SDM Specialist',
-      'Kompensasi dan Manfaat Specialist',
-      'Karyawan Penugasan Specialist'
-    ]);
-
-    // 4. Divisi Teknologi Informasi
-    await addDivisionTree('DIV_TI', 'Divisi Teknologi Informasi', orgDirKeu, posDirKeu, [
-      { 
-        deptCode: 'TI_PERENCANAAN', 
-        deptName: 'Perencanaan & Pengembangan', 
-        kabagTitle: 'Kepala Bagian Perencanaan & Pengembangan', 
-        staffTitles: [
-          'Perencanaan dan Koordinator Proyek Specialist', 
-          'Manager Proyek & Jaminan Kualitas Specialist', 
-          'Analis TI Specialist', 
-          'Staff Pengembangan Sistem Aplikasi'
-        ] 
-      },
-      { 
-        deptCode: 'TI_INFRASTRUKTUR', 
-        deptName: 'Infrastruktur dan Keamanan', 
-        kabagTitle: 'Kepala Bagian Infrastruktur dan Keamanan', 
-        staffTitles: [
-          'Infrastruktur & Pusat Data Specialist', 
-          'Administrator Basis Data & DevOps Specialist', 
-          'Jaringan & Operasional Specialist', 
-          'Administrator Keamanan Specialist'
-        ] 
-      },
-      { 
-        deptCode: 'TI_STRATEGI', 
-        deptName: 'Strategi & Arsitektur TI', 
-        kabagTitle: 'Kepala Bagian Strategi & Arsitektur TI', 
-        staffTitles: ['IT Architect Specialist'] 
-      },
-    ]);
-
-    // 5. Divisi Pengadaan dan Manajemen Aset
-    await addDivisionTree('DIV_PMA', 'Divisi Pengadaan dan Manajemen Aset', orgDirKeu, posDirKeu, [
-      { deptCode: 'PMA_PENGADAAN', deptName: 'Pengadaan', kabagTitle: 'Kepala Bagian Pengadaan', staffTitles: ['Management Vendor Specialist', 'Perencanaan Pengadaan Specialist'] },
-      { deptCode: 'PMA_ASET', deptName: 'Manajemen Aset', kabagTitle: 'Kepala Bagian Manajemen Aset', staffTitles: ['Pengelolaan Gedung Specialist', 'Manajemen Fasilitas Specialist'] },
-    ]);
+    // Bagian 2: Manajemen Proyek dan Hubungan Internasional
+    const orgSPK_Bag2 = await orgRepo.save(orgRepo.create({
+      code: 'SPK_BAG2',
+      name: 'Manajemen Proyek dan Hubungan Internasional',
+      levelType: 'DEPARTMENT',
+      parent: orgDivSPK,
+    }));
+    const posKabagSPK_2 = await posRepo.save(posRepo.create({
+      title: 'Kepala Bagian Manajemen Proyek dan Hubungan Internasional',
+      organizationUnit: orgSPK_Bag2,
+      jobLevel: lvlKabag,
+      parentPosition: posKadivSPK,
+    }));
+    // Turunan Bagian 2
+    await posRepo.save(posRepo.create({ title: 'Manajemen Proyek', organizationUnit: orgSPK_Bag2, jobLevel: lvlStaff, parentPosition: posKabagSPK_2 }));
+    await posRepo.save(posRepo.create({ title: 'Hubungan Internasional', organizationUnit: orgSPK_Bag2, jobLevel: lvlStaff, parentPosition: posKabagSPK_2 }));
 
 
-    // ==========================================
-    // E. ROLES & DUMMY USER (SYAFRI)
-    // ==========================================
-    console.log('Creating Roles & Dummy User Syafri...');
+    // =========================================================================
+    // CONTOH 2: Divisi Sekretariat Perusahaan (Direktorat Utama)
+    // =========================================================================
+    const orgDivSekper = await orgRepo.save(orgRepo.create({
+      code: 'SEKRETARIAT_PERUSAHAAN',
+      name: 'Sekretariat Perusahaan',
+      levelType: 'DIVISION',
+      parent: orgDirut,
+    }));
+    const posKadivSekper = await posRepo.save(posRepo.create({
+      title: 'Kepala Sekretariat Perusahaan',
+      organizationUnit: orgDivSekper,
+      jobLevel: lvlKadiv,
+      parentPosition: posDirut,
+    }));
+
+    // Bagian 1: Komunikasi Perusahaan dan Hub Pemangku Kepentingan
+    const orgSekper_Bag1 = await orgRepo.save(orgRepo.create({
+      code: 'SEKPER_BAG1',
+      name: 'Komunikasi Perusahaan dan Hub Pemangku Kepentingan',
+      levelType: 'DEPARTMENT',
+      parent: orgDivSekper,
+    }));
+    const posKabagSekper_1 = await posRepo.save(posRepo.create({
+      title: 'Kepala Bagian Komunikasi Perusahaan dan Hub Pemangku Kepentingan',
+      organizationUnit: orgSekper_Bag1,
+      jobLevel: lvlKabag,
+      parentPosition: posKadivSekper,
+    }));
+    // Turunan Bagian 1
+    await posRepo.save(posRepo.create({ title: 'Hubungan Stakeholder dan Pelaporan', organizationUnit: orgSekper_Bag1, jobLevel: lvlStaff, parentPosition: posKabagSekper_1 }));
+    await posRepo.save(posRepo.create({ title: 'Manajemen Brand dan Aset Digital', organizationUnit: orgSekper_Bag1, jobLevel: lvlStaff, parentPosition: posKabagSekper_1 }));
+    await posRepo.save(posRepo.create({ title: 'Komunikasi Korporasi', organizationUnit: orgSekper_Bag1, jobLevel: lvlStaff, parentPosition: posKabagSekper_1 }));
+
+    // Bagian 2: TJSL dan Pengembangan Komunitas
+    const orgSekper_Bag2 = await orgRepo.save(orgRepo.create({
+      code: 'SEKPER_BAG2',
+      name: 'TJSL dan Pengembangan Komunitas',
+      levelType: 'DEPARTMENT',
+      parent: orgDivSekper,
+    }));
+    const posKabagSekper_2 = await posRepo.save(posRepo.create({
+      title: 'Kepala Bagian TJSL dan Pengembangan Komunitas',
+      organizationUnit: orgSekper_Bag2,
+      jobLevel: lvlKabag,
+      parentPosition: posKadivSekper,
+    }));
+    // Turunan Bagian 2
+    await posRepo.save(posRepo.create({ title: 'Pengembangan Komunitas', organizationUnit: orgSekper_Bag2, jobLevel: lvlStaff, parentPosition: posKabagSekper_2 }));
+    await posRepo.save(posRepo.create({ title: 'TPPK dan Homestay', organizationUnit: orgSekper_Bag2, jobLevel: lvlStaff, parentPosition: posKabagSekper_2 }));
+    await posRepo.save(posRepo.create({ title: 'Manajemen Stakeholder Internal', organizationUnit: orgSekper_Bag2, jobLevel: lvlStaff, parentPosition: posKabagSekper_2 }));
+
+    // Non Bagian (Langsung under Kadiv Sekretariat Perusahaan)
+    await posRepo.save(posRepo.create({ title: 'EBA Ritel', organizationUnit: orgDivSekper, jobLevel: lvlStaff, parentPosition: posKadivSekper }));
+    await posRepo.save(posRepo.create({ title: 'Executive Assistant', organizationUnit: orgDivSekper, jobLevel: lvlStaff, parentPosition: posKadivSekper }));
+    await posRepo.save(posRepo.create({ title: 'Sekretaris Direksi', organizationUnit: orgDivSekper, jobLevel: lvlStaff, parentPosition: posKadivSekper }));
+    await posRepo.save(posRepo.create({ title: 'Protokoler, Pengelolaan Arsip dan Pelaporan', organizationUnit: orgDivSekper, jobLevel: lvlStaff, parentPosition: posKadivSekper }));
+
+
+    // =========================================================================
+    // CONTOH 3: Divisi Teknologi Informasi (Direktur Keuangan dan Manajemen Risiko)
+    // =========================================================================
+    const orgDivTI = await orgRepo.save(orgRepo.create({
+      code: 'DIV_TI',
+      name: 'Divisi Teknologi Informasi',
+      levelType: 'DIVISION',
+      parent: orgDirKeu,
+    }));
+    const posKadivTI = await posRepo.save(posRepo.create({
+      title: 'Kepala Divisi Teknologi Informasi',
+      organizationUnit: orgDivTI,
+      jobLevel: lvlKadiv,
+      parentPosition: posDirKeu,
+    }));
+
+    // Bagian 1: Perencanaan dan Pengembangan
+    const orgTI_Bag1 = await orgRepo.save(orgRepo.create({
+      code: 'TI_BAG1',
+      name: 'Perencanaan dan Pengembangan',
+      levelType: 'DEPARTMENT',
+      parent: orgDivTI,
+    }));
+    const posKabagTI_1 = await posRepo.save(posRepo.create({
+      title: 'Kepala Bagian Perencanaan dan Pengembangan',
+      organizationUnit: orgTI_Bag1,
+      jobLevel: lvlKabag,
+      parentPosition: posKadivTI,
+    }));
+    // Turunan Bagian 1
+    await posRepo.save(posRepo.create({ title: 'Perencanaan dan Koordinator Proyek', organizationUnit: orgTI_Bag1, jobLevel: lvlStaff, parentPosition: posKabagTI_1 }));
+    await posRepo.save(posRepo.create({ title: 'Manager Proyek dan Jaminan Kualitas', organizationUnit: orgTI_Bag1, jobLevel: lvlStaff, parentPosition: posKabagTI_1 }));
+    await posRepo.save(posRepo.create({ title: 'Analis TI', organizationUnit: orgTI_Bag1, jobLevel: lvlStaff, parentPosition: posKabagTI_1 }));
     
-    const roleStaff = await roleRepo.save(roleRepo.create({ code: 'STAFF', name: 'Staff Umum', description: 'Role dasar untuk semua staff' }));
-    await roleRepo.save(roleRepo.create({ code: 'KABAG', name: 'Kepala Bagian', description: 'Role Kepala Bagian / Approver Step 1' }));
-    await roleRepo.save(roleRepo.create({ code: 'KADIV', name: 'Kepala Divisi', description: 'Role Kepala Divisi / Approver Step 2' }));
-    await roleRepo.save(roleRepo.create({ code: 'ADMIN_SDM', name: 'Admin SDM', description: 'Role Administrator SDM' }));
+    // Position for Syafri
+    const posSyafri = await posRepo.save(posRepo.create({
+      title: 'Pengembang Sistem Aplikasi',
+      organizationUnit: orgTI_Bag1,
+      jobLevel: lvlStaff,
+      parentPosition: posKabagTI_1,
+    }));
 
-    // Find position of Syafri
-    const posSyafri = await posRepo.findOne({ where: { title: 'Staff Pengembangan Sistem Aplikasi' } });
-    if (!posSyafri) {
-      throw new Error('Position Staff Pengembangan Sistem Aplikasi not found!');
-    }
+    // Bagian 2: Infrastruktur dan Keamanan
+    const orgTI_Bag2 = await orgRepo.save(orgRepo.create({
+      code: 'TI_BAG2',
+      name: 'Infrastruktur dan Keamanan',
+      levelType: 'DEPARTMENT',
+      parent: orgDivTI,
+    }));
+    const posKabagTI_2 = await posRepo.save(posRepo.create({
+      title: 'Kepala Bagian Infrastruktur dan Keamanan',
+      organizationUnit: orgTI_Bag2,
+      jobLevel: lvlKabag,
+      parentPosition: posKadivTI,
+    }));
+    // Turunan Bagian 2
+    await posRepo.save(posRepo.create({ title: 'Infrastruktur Pusat Data', organizationUnit: orgTI_Bag2, jobLevel: lvlStaff, parentPosition: posKabagTI_2 }));
+    await posRepo.save(posRepo.create({ title: 'Administrator Basis Data dan Pengembangan Operasional', organizationUnit: orgTI_Bag2, jobLevel: lvlStaff, parentPosition: posKabagTI_2 }));
+    await posRepo.save(posRepo.create({ title: 'Jaringan dan Operasional', organizationUnit: orgTI_Bag2, jobLevel: lvlStaff, parentPosition: posKabagTI_2 }));
+    await posRepo.save(posRepo.create({ title: 'Administrator Keamanan', organizationUnit: orgTI_Bag2, jobLevel: lvlStaff, parentPosition: posKabagTI_2 }));
+
+    // Non Bagian (Langsung under Kadiv TI)
+    await posRepo.save(posRepo.create({ title: 'Strategi dan Arsitektur TI', organizationUnit: orgDivTI, jobLevel: lvlStaff, parentPosition: posKadivTI }));
+
+
+    // =========================================================================
+    // ROLES & USER SYAFRI
+    // =========================================================================
+    const roleStaff = await roleRepo.save(roleRepo.create({ code: 'STAFF', name: 'Staff / Fungsi', description: 'Role dasar untuk staff' }));
+    await roleRepo.save(roleRepo.create({ code: 'KABAG', name: 'Kepala Bagian', description: 'Role Kepala Bagian' }));
+    await roleRepo.save(roleRepo.create({ code: 'KADIV', name: 'Kepala Divisi', description: 'Role Kepala Divisi' }));
 
     const hashedPassword = await bcrypt.hash('12345', 10);
     const userSyafri = await userRepo.save(userRepo.create({
@@ -263,7 +269,7 @@ async function resetAndSeed() {
 
     await userRoleRepo.save(userRoleRepo.create({ user: userSyafri, role: roleStaff }));
 
-    console.log('🎉 Reset and Seeding completed 100% successfully according to SK Direksi 2025!');
+    console.log('✅ 3 Specific Divisions seeded perfectly into DB!');
   } catch (error) {
     console.error('Error during seeding:', error);
   } finally {
@@ -271,4 +277,4 @@ async function resetAndSeed() {
   }
 }
 
-resetAndSeed();
+resetAndSeedClean();
