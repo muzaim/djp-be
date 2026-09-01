@@ -1296,7 +1296,7 @@ async function resetAndSeedAll() {
     );
 
     // =========================================================================
-    // ROLES & USER SYAFRI
+    // SYSTEM ROLES & DEFAULT USERS (ADMIN & SYAFRI)
     // =========================================================================
     const roleStaff = await roleRepo.save(
       roleRepo.create({
@@ -1305,22 +1305,55 @@ async function resetAndSeedAll() {
         description: 'Role dasar untuk staff',
       }),
     );
-    await roleRepo.save(
+    const roleKabag = await roleRepo.save(
       roleRepo.create({
         code: 'KABAG',
         name: 'Kepala Bagian',
         description: 'Role Kepala Bagian',
       }),
     );
-    await roleRepo.save(
+    const roleKadiv = await roleRepo.save(
       roleRepo.create({
         code: 'KADIV',
         name: 'Kepala Divisi',
         description: 'Role Kepala Divisi',
       }),
     );
+    const roleAdmin = await roleRepo.save(
+      roleRepo.create({
+        code: 'ADMIN',
+        name: 'Administrator',
+        description: 'Role Administrator System Utama',
+      }),
+    );
+    const roleAdminSDM = await roleRepo.save(
+      roleRepo.create({
+        code: 'ADMIN_SDM',
+        name: 'Admin SDM',
+        description: 'Role Admin SDM & Pengelolaan Karyawan',
+      }),
+    );
 
     const hashedPassword = await bcrypt.hash('12345', 10);
+
+    // 1. User Admin Utama (admin@smf.co.id)
+    const userAdmin = await userRepo.save(
+      userRepo.create({
+        email: 'admin@smf.co.id',
+        name: 'Administrator System',
+        password: hashedPassword,
+        position: posKadivSDM,
+        isActive: true,
+      }),
+    );
+    await userRoleRepo.save(
+      userRoleRepo.create({ user: userAdmin, role: roleAdmin }),
+    );
+    await userRoleRepo.save(
+      userRoleRepo.create({ user: userAdmin, role: roleAdminSDM }),
+    );
+
+    // 2. User Staff Syafri (syafri@smf.co.id)
     const userSyafri = await userRepo.save(
       userRepo.create({
         email: 'syafri@smf.co.id',
@@ -1330,12 +1363,11 @@ async function resetAndSeedAll() {
         isActive: true,
       }),
     );
-
     await userRoleRepo.save(
       userRoleRepo.create({ user: userSyafri, role: roleStaff }),
     );
 
-    console.log('✅ All 14 Divisions seeded 100% perfectly into database!');
+    console.log('✅ All 14 Divisions, Roles, Admin User (admin@smf.co.id), and Syafri User seeded 100% perfectly into database!');
   } catch (error) {
     console.error('Error during seeding:', error);
   } finally {
