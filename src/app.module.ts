@@ -10,8 +10,10 @@ import { OrganizationsModule } from './modules/organizations/organizations.modul
 import { RolesModule } from './modules/roles/roles.module';
 import { AuthModule } from './modules/auth/auth.module';
 import { HealthModule } from './modules/health/health.module';
+import { AuditLogsModule } from './modules/audit-logs/audit-logs.module';
 import { AllExceptionsFilter } from './common/filters/all-exceptions.filter';
 import { TransformInterceptor } from './common/interceptors/transform.interceptor';
+import { AuditLogInterceptor } from './common/interceptors/audit-log.interceptor';
 import { JwtAuthGuard } from './modules/auth/guards/jwt-auth.guard';
 
 @Module({
@@ -38,6 +40,7 @@ import { JwtAuthGuard } from './modules/auth/guards/jwt-auth.guard';
     UsersModule,
     OrganizationsModule,
     RolesModule,
+    AuditLogsModule,
     HealthModule,
   ],
   controllers: [AppController],
@@ -50,6 +53,10 @@ import { JwtAuthGuard } from './modules/auth/guards/jwt-auth.guard';
     {
       provide: APP_INTERCEPTOR,
       useClass: TransformInterceptor,
+    },
+    {
+      provide: APP_INTERCEPTOR,
+      useClass: AuditLogInterceptor,
     },
     {
       provide: APP_GUARD,

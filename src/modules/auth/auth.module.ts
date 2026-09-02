@@ -21,7 +21,7 @@ import { UsersModule } from '../users/users.module';
 
         const customExpiry = configService.get<string>('JWT_EXPIRATION_TIME');
         // Dev: 24h (24 jam), Prod: 30m (30 menit)
-        const defaultExpiry = appMode === 'production' ? '30m' : '24h';
+        const defaultExpiry = appMode === 'production' ? '30m' : '48h';
 
         return {
           secret: configService.get<string>('JWT_SECRET'),

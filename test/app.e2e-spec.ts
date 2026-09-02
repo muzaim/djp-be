@@ -13,12 +13,14 @@ import { JobLevel } from './../src/modules/organizations/entities/job-level.enti
 import { Position } from './../src/modules/organizations/entities/position.entity';
 import { Role } from './../src/modules/roles/entities/role.entity';
 import { UserRole } from './../src/modules/roles/entities/user-role.entity';
+import { AuditLog } from './../src/modules/audit-logs/entities/audit-log.entity';
 import { DataSource } from 'typeorm';
 
 describe('AppController (e2e)', () => {
   let app: INestApplication;
   const mockRepo = {
     find: jest.fn().mockResolvedValue([]),
+    findAndCount: jest.fn().mockResolvedValue([[], 0]),
     findOne: jest.fn().mockResolvedValue(null),
     findOneBy: jest.fn().mockResolvedValue(null),
     create: jest.fn(),
@@ -42,6 +44,8 @@ describe('AppController (e2e)', () => {
       .overrideProvider(getRepositoryToken(Role))
       .useValue(mockRepo)
       .overrideProvider(getRepositoryToken(UserRole))
+      .useValue(mockRepo)
+      .overrideProvider(getRepositoryToken(AuditLog))
       .useValue(mockRepo)
       .overrideProvider(DataSource)
       .useValue({
