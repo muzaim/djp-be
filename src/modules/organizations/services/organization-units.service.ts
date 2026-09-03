@@ -134,6 +134,14 @@ export class OrganizationUnitsService {
     });
   }
 
+  async findDepartmentsByDivision(divisionId: string): Promise<OrganizationUnit[]> {
+    return this.orgRepository.find({
+      where: { parentId: divisionId, levelType: 'DEPARTMENT' },
+      relations: ['parent'],
+      order: { name: 'ASC' },
+    });
+  }
+
   async findOne(id: string): Promise<OrganizationUnit> {
     const org = await this.orgRepository.findOne({
       where: { id },

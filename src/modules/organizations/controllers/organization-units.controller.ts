@@ -60,6 +60,12 @@ export class OrganizationUnitsController {
     return this.orgService.findDivisions();
   }
 
+  @Get('departments/by-division/:divisionId')
+  @ApiOperation({ summary: 'Ambil daftar bagian (department) berdasarkan ID Divisi' })
+  findDepartmentsByDivision(@Param('divisionId', ParseUUIDPipe) divisionId: string) {
+    return this.orgService.findDepartmentsByDivision(divisionId);
+  }
+
   @Get(':id')
   @ApiOperation({ summary: 'Ambil detail unit organisasi berdasarkan ID' })
   findOne(@Param('id', ParseUUIDPipe) id: string) {

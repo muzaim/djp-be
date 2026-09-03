@@ -54,6 +54,14 @@ export class PositionsController {
     return this.positionsService.findByDivision(divisionId);
   }
 
+  @Get('by-department/:departmentId')
+  @ApiOperation({
+    summary: 'Ambil daftar posisi jabatan / fungsi berdasarkan ID Bagian (Department)',
+  })
+  findByDepartment(@Param('departmentId', ParseUUIDPipe) departmentId: string) {
+    return this.positionsService.findByDepartment(departmentId);
+  }
+
   @Get(':id')
   @ApiOperation({ summary: 'Ambil detail posisi jabatan berdasarkan ID' })
   findOne(@Param('id', ParseUUIDPipe) id: string) {

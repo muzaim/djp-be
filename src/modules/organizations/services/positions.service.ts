@@ -153,6 +153,21 @@ export class PositionsService {
     return positions.map((pos) => this.transformPosition(pos));
   }
 
+  async findByDepartment(departmentId: string): Promise<any[]> {
+    const positions = await this.positionRepository.find({
+      where: { organizationUnitId: departmentId },
+      relations: [
+        'organizationUnit',
+        'organizationUnit.parent',
+        'jobLevel',
+        'parentPosition',
+      ],
+      order: { title: 'ASC' },
+    });
+
+    return positions.map((pos) => this.transformPosition(pos));
+  }
+
   async findOne(id: string) {
     const position = await this.positionRepository.findOne({
       where: { id },
