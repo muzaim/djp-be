@@ -14,6 +14,7 @@ import { Position } from './../src/modules/organizations/entities/position.entit
 import { Role } from './../src/modules/roles/entities/role.entity';
 import { UserRole } from './../src/modules/roles/entities/user-role.entity';
 import { AuditLog } from './../src/modules/audit-logs/entities/audit-log.entity';
+import { ActivityOutput } from './../src/modules/activity-outputs/entities/activity-output.entity';
 import { DataSource } from 'typeorm';
 
 describe('AppController (e2e)', () => {
@@ -46,6 +47,8 @@ describe('AppController (e2e)', () => {
       .overrideProvider(getRepositoryToken(UserRole))
       .useValue(mockRepo)
       .overrideProvider(getRepositoryToken(AuditLog))
+      .useValue(mockRepo)
+      .overrideProvider(getRepositoryToken(ActivityOutput))
       .useValue(mockRepo)
       .overrideProvider(DataSource)
       .useValue({
