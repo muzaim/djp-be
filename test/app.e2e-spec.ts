@@ -15,6 +15,8 @@ import { Role } from './../src/modules/roles/entities/role.entity';
 import { UserRole } from './../src/modules/roles/entities/user-role.entity';
 import { AuditLog } from './../src/modules/audit-logs/entities/audit-log.entity';
 import { ActivityOutput } from './../src/modules/activity-outputs/entities/activity-output.entity';
+import { Responsibility } from './../src/modules/responsibilities/entities/responsibility.entity';
+import { Activity } from './../src/modules/responsibilities/entities/activity.entity';
 import { DataSource } from 'typeorm';
 
 describe('AppController (e2e)', () => {
@@ -49,6 +51,10 @@ describe('AppController (e2e)', () => {
       .overrideProvider(getRepositoryToken(AuditLog))
       .useValue(mockRepo)
       .overrideProvider(getRepositoryToken(ActivityOutput))
+      .useValue(mockRepo)
+      .overrideProvider(getRepositoryToken(Responsibility))
+      .useValue(mockRepo)
+      .overrideProvider(getRepositoryToken(Activity))
       .useValue(mockRepo)
       .overrideProvider(DataSource)
       .useValue({
