@@ -1,6 +1,8 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
+import { Response } from 'express';
+import * as ExcelJS from 'exceljs';
 import { Responsibility } from '../entities/responsibility.entity';
 import { Activity } from '../entities/activity.entity';
 import { Position } from '../../organizations/entities/position.entity';
@@ -157,6 +159,120 @@ export class ResponsibilitiesService {
         totalPages: Math.ceil(totalItems / limit),
       },
     };
+  }
+
+  async exportToExcel(
+    res: Response,
+    paginationDto: PaginationDto = new PaginationDto(),
+    divisionId?: string,
+    departmentId?: string,
+    positionId?: string,
+  ): Promise<void> {
+    const search = paginationDto.search || '';
+
+    const qb = this.responsibilityRepository
+      .createQueryBuilder('resp')
+      .leftJoinAndSelect('resp.activities', 'activities')
+      .leftJoinAndSelect('resp.position', 'position')
+      .leftJoinAndSelect('position.organizationUnit', 'orgUnit')
+      .leftJoinAndSelect('orgUnit.parent', 'parentUnit')
+      .leftJoinAndSelect('parentUnit.parent', 'grandparentUnit')
+      .leftJoinAndSelect('position.jobLevel', 'jobLevel')
+      .where('resp.deletedAt IS NULL');
+
+    if (search) {
+      qb.andWhere('(resp.name LIKE :search OR resp.code LIKE :search)', {
+        search: `%${search}%`,
+      });
+    }
+
+    if (positionId) {
+      qb.andWhere('resp.positionId = :positionId', { positionId });
+    }
+
+    if (departmentId) {
+      qb.andWhere('position.organizationUnitId = :departmentId', {
+        departmentId,
+      });
+    }
+
+    if (divisionId) {
+      qb.andWhere(
+        '(orgUnit.id = :divisionId OR parentUnit.id = :divisionId OR grandparentUnit.id = :divisionId)',
+        { divisionId },
+      );
+    }
+
+    qb.orderBy('resp.createdAt', 'ASC');
+
+    const rawItems = await qb.getMany();
+    const items = rawItems.map((item) => this.transformResponsibility(item));
+
+    const workbook = new ExcelJS.Workbook();
+    const worksheet = workbook.addWorksheet('Master Tanggung Jawab');
+
+    worksheet.columns = [
+      { header: 'No', key: 'no', width: 6 },
+      { header: 'Kode TJU', key: 'code', width: 16 },
+      { header: 'Divisi', key: 'division', width: 32 },
+      { header: 'Fungsi', key: 'position', width: 32 },
+      { header: 'Nama Tanggung Jawab', key: 'name', width: 42 },
+      { header: 'Aktivitas', key: 'activities', width: 55 },
+    ];
+
+    // Style Header Row
+    const headerRow = worksheet.getRow(1);
+    headerRow.font = { bold: true, color: { argb: 'FFFFFF' }, size: 11 };
+    headerRow.fill = {
+      type: 'pattern',
+      pattern: 'solid',
+      fgColor: { argb: '1F497D' },
+    };
+    headerRow.alignment = { vertical: 'middle', horizontal: 'center' };
+    headerRow.height = 24;
+
+    // Add Data Rows
+    items.forEach((item, index) => {
+      const activitiesText =
+        item.activities && item.activities.length > 0
+          ? item.activities
+              .map((act: any, idx: number) => `${idx + 1}. ${act.name}`)
+              .join('\n')
+          : '-';
+
+      const row = worksheet.addRow({
+        no: index + 1,
+        code: item.code || '-',
+        division: item.position?.division?.name || '-',
+        position: item.position?.title || '-',
+        name: item.name,
+        activities: activitiesText,
+      });
+
+      row.alignment = { vertical: 'top', wrapText: true };
+
+      row.eachCell({ includeEmpty: true }, (cell) => {
+        cell.border = {
+          top: { style: 'thin', color: { argb: 'D9D9D9' } },
+          left: { style: 'thin', color: { argb: 'D9D9D9' } },
+          bottom: { style: 'thin', color: { argb: 'D9D9D9' } },
+          right: { style: 'thin', color: { argb: 'D9D9D9' } },
+        };
+      });
+    });
+
+    const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+    res.setHeader(
+      'Content-Type',
+      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    );
+    res.setHeader(
+      'Content-Disposition',
+      `attachment; filename=Master_Tanggung_Jawab_${timestamp}.xlsx`,
+    );
+
+    await workbook.xlsx.write(res);
+    res.end();
   }
 
   async findOne(id: string): Promise<any> {

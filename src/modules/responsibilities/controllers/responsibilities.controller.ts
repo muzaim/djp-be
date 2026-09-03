@@ -10,8 +10,10 @@ import {
   Query,
   HttpCode,
   HttpStatus,
+  Res,
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth, ApiQuery } from '@nestjs/swagger';
+import { Response } from 'express';
 import { ResponsibilitiesService } from '../services/responsibilities.service';
 import { CreateResponsibilityDto } from '../dto/create-responsibility.dto';
 import { UpdateResponsibilityDto } from '../dto/update-responsibility.dto';
@@ -55,6 +57,43 @@ export class ResponsibilitiesController {
     @Query('positionId') positionId?: string,
   ) {
     return this.responsibilitiesService.findAll(
+      filterDto,
+      divisionId || filterDto.divisionId,
+      departmentId || filterDto.departmentId,
+      positionId || filterDto.positionId,
+    );
+  }
+
+  @Post('export')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Export data tanggung jawab ke format Excel (.xlsx) dengan filter (via Body)' })
+  exportPost(
+    @Body() filterDto: FilterResponsibilityDto,
+    @Res() res: Response,
+  ) {
+    return this.responsibilitiesService.exportToExcel(
+      res,
+      filterDto,
+      filterDto.divisionId,
+      filterDto.departmentId,
+      filterDto.positionId,
+    );
+  }
+
+  @Get('export')
+  @ApiOperation({ summary: 'Export data tanggung jawab ke format Excel (.xlsx) dengan filter (via Query)' })
+  @ApiQuery({ name: 'divisionId', required: false, type: String })
+  @ApiQuery({ name: 'departmentId', required: false, type: String })
+  @ApiQuery({ name: 'positionId', required: false, type: String })
+  exportGet(
+    @Query() filterDto: FilterResponsibilityDto,
+    @Query('divisionId') divisionId: string,
+    @Query('departmentId') departmentId: string,
+    @Query('positionId') positionId: string,
+    @Res() res: Response,
+  ) {
+    return this.responsibilitiesService.exportToExcel(
+      res,
       filterDto,
       divisionId || filterDto.divisionId,
       departmentId || filterDto.departmentId,
