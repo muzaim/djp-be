@@ -15,7 +15,7 @@ import { ApiTags, ApiOperation, ApiBearerAuth, ApiQuery } from '@nestjs/swagger'
 import { ResponsibilitiesService } from '../services/responsibilities.service';
 import { CreateResponsibilityDto } from '../dto/create-responsibility.dto';
 import { UpdateResponsibilityDto } from '../dto/update-responsibility.dto';
-import { PaginationDto } from '../../../common/dto/pagination.dto';
+import { FilterResponsibilityDto } from '../dto/filter-responsibility.dto';
 
 @ApiBearerAuth()
 @ApiTags('Responsibilities (Master Tanggung Jawab)')
@@ -33,22 +33,33 @@ export class ResponsibilitiesController {
 
   @Post('list')
   @HttpCode(HttpStatus.OK)
-  @ApiOperation({ summary: 'Ambil daftar tanggung jawab dengan pagination (via Body)' })
-  findAllPost(
-    @Body() paginationDto: PaginationDto,
-    @Query('positionId') positionId?: string,
-  ) {
-    return this.responsibilitiesService.findAll(paginationDto, positionId);
+  @ApiOperation({ summary: 'Ambil daftar tanggung jawab dengan advanced filter (via Body)' })
+  findAllPost(@Body() filterDto: FilterResponsibilityDto) {
+    return this.responsibilitiesService.findAll(
+      filterDto,
+      filterDto.divisionId,
+      filterDto.departmentId,
+      filterDto.positionId,
+    );
   }
 
   @Get()
-  @ApiOperation({ summary: 'Ambil daftar tanggung jawab dengan pagination (via Query)' })
+  @ApiOperation({ summary: 'Ambil daftar tanggung jawab dengan advanced filter (via Query)' })
+  @ApiQuery({ name: 'divisionId', required: false, type: String })
+  @ApiQuery({ name: 'departmentId', required: false, type: String })
   @ApiQuery({ name: 'positionId', required: false, type: String })
   findAll(
-    @Query() paginationDto: PaginationDto,
+    @Query() filterDto: FilterResponsibilityDto,
+    @Query('divisionId') divisionId?: string,
+    @Query('departmentId') departmentId?: string,
     @Query('positionId') positionId?: string,
   ) {
-    return this.responsibilitiesService.findAll(paginationDto, positionId);
+    return this.responsibilitiesService.findAll(
+      filterDto,
+      divisionId || filterDto.divisionId,
+      departmentId || filterDto.departmentId,
+      positionId || filterDto.positionId,
+    );
   }
 
   @Get('by-position/:positionId')

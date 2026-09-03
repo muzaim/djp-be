@@ -1,6 +1,6 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Like, Repository } from 'typeorm';
+import { Repository } from 'typeorm';
 import { Responsibility } from '../entities/responsibility.entity';
 import { Activity } from '../entities/activity.entity';
 import { Position } from '../../organizations/entities/position.entity';
@@ -100,6 +100,8 @@ export class ResponsibilitiesService {
 
   async findAll(
     paginationDto: PaginationDto = new PaginationDto(),
+    divisionId?: string,
+    departmentId?: string,
     positionId?: string,
   ): Promise<PaginatedResult<any>> {
     const page = paginationDto.page || 1;
@@ -107,31 +109,44 @@ export class ResponsibilitiesService {
     const skip = (page - 1) * limit;
     const search = paginationDto.search || '';
 
-    const whereCondition: any = search
-      ? [{ name: Like(`%${search}%`) }, { code: Like(`%${search}%`) }]
-      : {};
+    const qb = this.responsibilityRepository
+      .createQueryBuilder('resp')
+      .leftJoinAndSelect('resp.activities', 'activities')
+      .leftJoinAndSelect('resp.position', 'position')
+      .leftJoinAndSelect('position.organizationUnit', 'orgUnit')
+      .leftJoinAndSelect('orgUnit.parent', 'parentUnit')
+      .leftJoinAndSelect('parentUnit.parent', 'grandparentUnit')
+      .leftJoinAndSelect('position.jobLevel', 'jobLevel')
+      .where('resp.deletedAt IS NULL');
 
-    if (positionId) {
-      if (Array.isArray(whereCondition)) {
-        whereCondition.forEach((cond) => (cond.positionId = positionId));
-      } else {
-        whereCondition.positionId = positionId;
-      }
+    if (search) {
+      qb.andWhere('(resp.name LIKE :search OR resp.code LIKE :search)', {
+        search: `%${search}%`,
+      });
     }
 
-    const [items, totalItems] = await this.responsibilityRepository.findAndCount({
-      where: whereCondition,
-      relations: [
-        'activities',
-        'position',
-        'position.organizationUnit',
-        'position.organizationUnit.parent',
-        'position.jobLevel',
-      ],
-      order: { createdAt: 'ASC' },
-      skip,
-      take: limit,
-    });
+    if (positionId) {
+      qb.andWhere('resp.positionId = :positionId', { positionId });
+    }
+
+    if (departmentId) {
+      qb.andWhere('position.organizationUnitId = :departmentId', {
+        departmentId,
+      });
+    }
+
+    if (divisionId) {
+      qb.andWhere(
+        '(orgUnit.id = :divisionId OR parentUnit.id = :divisionId OR grandparentUnit.id = :divisionId)',
+        { divisionId },
+      );
+    }
+
+    qb.orderBy('resp.createdAt', 'ASC')
+      .skip(skip)
+      .take(limit);
+
+    const [items, totalItems] = await qb.getManyAndCount();
 
     return {
       items: items.map((item) => this.transformResponsibility(item)),
