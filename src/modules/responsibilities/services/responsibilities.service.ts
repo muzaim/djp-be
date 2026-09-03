@@ -217,7 +217,7 @@ export class ResponsibilitiesService {
       { header: 'Divisi', key: 'division', width: 32 },
       { header: 'Fungsi', key: 'position', width: 32 },
       { header: 'Nama Tanggung Jawab', key: 'name', width: 42 },
-      { header: 'Aktivitas', key: 'activities', width: 55 },
+      { header: 'Aktivitas', key: 'activities', width: 45 },
     ];
 
     // Style Header Row
@@ -231,34 +231,50 @@ export class ResponsibilitiesService {
     headerRow.alignment = { vertical: 'middle', horizontal: 'center' };
     headerRow.height = 24;
 
-    // Add Data Rows
-    items.forEach((item, index) => {
-      const activitiesText =
-        item.activities && item.activities.length > 0
-          ? item.activities
-              .map((act: any, idx: number) => `${idx + 1}. ${act.name}`)
-              .join('\n')
-          : '-';
+    // Add Data Rows (Flat per Activity)
+    let rowNo = 1;
+    items.forEach((item) => {
+      if (item.activities && item.activities.length > 0) {
+        item.activities.forEach((act: any) => {
+          const row = worksheet.addRow({
+            no: rowNo++,
+            code: item.code || '-',
+            division: item.position?.division?.name || '-',
+            position: item.position?.title || '-',
+            name: item.name,
+            activities: act.name,
+          });
 
-      const row = worksheet.addRow({
-        no: index + 1,
-        code: item.code || '-',
-        division: item.position?.division?.name || '-',
-        position: item.position?.title || '-',
-        name: item.name,
-        activities: activitiesText,
-      });
+          row.alignment = { vertical: 'middle' };
+          row.eachCell({ includeEmpty: true }, (cell) => {
+            cell.border = {
+              top: { style: 'thin', color: { argb: 'D9D9D9' } },
+              left: { style: 'thin', color: { argb: 'D9D9D9' } },
+              bottom: { style: 'thin', color: { argb: 'D9D9D9' } },
+              right: { style: 'thin', color: { argb: 'D9D9D9' } },
+            };
+          });
+        });
+      } else {
+        const row = worksheet.addRow({
+          no: rowNo++,
+          code: item.code || '-',
+          division: item.position?.division?.name || '-',
+          position: item.position?.title || '-',
+          name: item.name,
+          activities: '-',
+        });
 
-      row.alignment = { vertical: 'top', wrapText: true };
-
-      row.eachCell({ includeEmpty: true }, (cell) => {
-        cell.border = {
-          top: { style: 'thin', color: { argb: 'D9D9D9' } },
-          left: { style: 'thin', color: { argb: 'D9D9D9' } },
-          bottom: { style: 'thin', color: { argb: 'D9D9D9' } },
-          right: { style: 'thin', color: { argb: 'D9D9D9' } },
-        };
-      });
+        row.alignment = { vertical: 'middle' };
+        row.eachCell({ includeEmpty: true }, (cell) => {
+          cell.border = {
+            top: { style: 'thin', color: { argb: 'D9D9D9' } },
+            left: { style: 'thin', color: { argb: 'D9D9D9' } },
+            bottom: { style: 'thin', color: { argb: 'D9D9D9' } },
+            right: { style: 'thin', color: { argb: 'D9D9D9' } },
+          };
+        });
+      }
     });
 
     const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
