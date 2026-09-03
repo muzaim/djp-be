@@ -7,11 +7,6 @@ export class CreateActivityOutputDto {
   @IsNotEmpty()
   name!: string;
 
-  @ApiPropertyOptional({ description: 'Kode unik keluaran aktivitas', example: 'OUT-001' })
-  @IsString()
-  @IsOptional()
-  code?: string;
-
   @ApiPropertyOptional({ description: 'Deskripsi / Keterangan', example: 'Dokumen laporan hasil evaluasi bulanan' })
   @IsString()
   @IsOptional()

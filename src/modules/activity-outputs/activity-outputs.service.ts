@@ -25,7 +25,7 @@ export class ActivityOutputsService {
     const search = paginationDto.search || '';
 
     const whereCondition = search
-      ? [{ name: Like(`%${search}%`) }, { code: Like(`%${search}%`) }]
+      ? [{ name: Like(`%${search}%`) }]
       : {};
 
     const [items, totalItems] = await this.activityOutputRepository.findAndCount({
