@@ -2,13 +2,14 @@ import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { Responsibility } from './entities/responsibility.entity';
 import { Activity } from './entities/activity.entity';
+import { Position } from '../organizations/entities/position.entity';
 import { ResponsibilitiesService } from './services/responsibilities.service';
 import { ActivitiesService } from './services/activities.service';
 import { ResponsibilitiesController } from './controllers/responsibilities.controller';
 import { ActivitiesController } from './controllers/activities.controller';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([Responsibility, Activity])],
+  imports: [TypeOrmModule.forFeature([Responsibility, Activity, Position])],
   controllers: [ResponsibilitiesController, ActivitiesController],
   providers: [ResponsibilitiesService, ActivitiesService],
   exports: [ResponsibilitiesService, ActivitiesService],

@@ -6,13 +6,26 @@ import {
   UpdateDateColumn,
   DeleteDateColumn,
   OneToMany,
+  ManyToOne,
+  JoinColumn,
 } from 'typeorm';
 import { Activity } from './activity.entity';
+import { Position } from '../../organizations/entities/position.entity';
 
 @Entity('mst_responsibilities')
 export class Responsibility {
   @PrimaryGeneratedColumn('uuid')
   id!: string;
+
+  @Column({ name: 'position_id', nullable: true })
+  positionId?: string;
+
+  @ManyToOne(() => Position, { onDelete: 'CASCADE' })
+  @JoinColumn({ name: 'position_id' })
+  position?: Position;
+
+  @Column({ nullable: true })
+  code?: string;
 
   @Column()
   name!: string;

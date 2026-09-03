@@ -5,12 +5,29 @@ import {
   IsBoolean,
   IsArray,
   ValidateNested,
+  IsUUID,
 } from 'class-validator';
 import { Type } from 'class-transformer';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { CreateActivityDto } from './create-activity.dto';
 
 export class CreateResponsibilityDto {
+  @ApiProperty({
+    description: 'ID Fungsi / Posisi Jabatan',
+    example: 'uuid-posisi-fungsi',
+  })
+  @IsUUID()
+  @IsNotEmpty()
+  positionId!: string;
+
+  @ApiPropertyOptional({
+    description: 'Kode Tanggung Jawab Utama (kode TJU)',
+    example: 'TJU-001',
+  })
+  @IsString()
+  @IsOptional()
+  code?: string;
+
   @ApiProperty({
     description: 'Nama tanggung jawab',
     example: 'Administrasi Karyawan Join/Resign',

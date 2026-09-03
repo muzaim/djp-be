@@ -11,7 +11,7 @@ import {
   HttpCode,
   HttpStatus,
 } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
+import { ApiTags, ApiOperation, ApiBearerAuth, ApiQuery } from '@nestjs/swagger';
 import { ResponsibilitiesService } from '../services/responsibilities.service';
 import { CreateResponsibilityDto } from '../dto/create-responsibility.dto';
 import { UpdateResponsibilityDto } from '../dto/update-responsibility.dto';
@@ -26,7 +26,7 @@ export class ResponsibilitiesController {
   ) {}
 
   @Post()
-  @ApiOperation({ summary: 'Tambah tanggung jawab baru (opsional berserta aktivitasnya)' })
+  @ApiOperation({ summary: 'Tambah tanggung jawab baru (terkait posisi fungsi)' })
   create(@Body() createDto: CreateResponsibilityDto) {
     return this.responsibilitiesService.create(createDto);
   }
@@ -34,18 +34,31 @@ export class ResponsibilitiesController {
   @Post('list')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Ambil daftar tanggung jawab dengan pagination (via Body)' })
-  findAllPost(@Body() paginationDto: PaginationDto) {
-    return this.responsibilitiesService.findAll(paginationDto);
+  findAllPost(
+    @Body() paginationDto: PaginationDto,
+    @Query('positionId') positionId?: string,
+  ) {
+    return this.responsibilitiesService.findAll(paginationDto, positionId);
   }
 
   @Get()
   @ApiOperation({ summary: 'Ambil daftar tanggung jawab dengan pagination (via Query)' })
-  findAll(@Query() paginationDto: PaginationDto) {
-    return this.responsibilitiesService.findAll(paginationDto);
+  @ApiQuery({ name: 'positionId', required: false, type: String })
+  findAll(
+    @Query() paginationDto: PaginationDto,
+    @Query('positionId') positionId?: string,
+  ) {
+    return this.responsibilitiesService.findAll(paginationDto, positionId);
+  }
+
+  @Get('by-position/:positionId')
+  @ApiOperation({ summary: 'Ambil daftar tanggung jawab berdasarkan ID Posisi / Fungsi' })
+  findByPosition(@Param('positionId', ParseUUIDPipe) positionId: string) {
+    return this.responsibilitiesService.findByPositionId(positionId);
   }
 
   @Get(':id')
-  @ApiOperation({ summary: 'Ambil detail tanggung jawab beserta daftar aktivitas turunannya' })
+  @ApiOperation({ summary: 'Ambil detail tanggung jawab beserta daftar aktivitas turunannya & posisi fungsi' })
   findOne(@Param('id', ParseUUIDPipe) id: string) {
     return this.responsibilitiesService.findOne(id);
   }
