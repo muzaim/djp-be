@@ -15,6 +15,8 @@ import { ActivityOutputsModule } from './modules/activity-outputs/activity-outpu
 import { ResponsibilitiesModule } from './modules/responsibilities/responsibilities.module';
 import { WorkEnvironmentsModule } from './modules/work-environments/work-environments.module';
 import { WorkExperiencesModule } from './modules/work-experiences/work-experiences.module';
+import { CompetenciesModule } from './modules/competencies/competencies.module';
+import { TrainingsModule } from './modules/trainings/trainings.module';
 import { AllExceptionsFilter } from './common/filters/all-exceptions.filter';
 import { TransformInterceptor } from './common/interceptors/transform.interceptor';
 import { AuditLogInterceptor } from './common/interceptors/audit-log.interceptor';
@@ -49,6 +51,8 @@ import { JwtAuthGuard } from './modules/auth/guards/jwt-auth.guard';
     ResponsibilitiesModule,
     WorkEnvironmentsModule,
     WorkExperiencesModule,
+    CompetenciesModule,
+    TrainingsModule,
     HealthModule,
   ],
   controllers: [AppController],
