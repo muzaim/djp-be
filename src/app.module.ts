@@ -13,6 +13,7 @@ import { HealthModule } from './modules/health/health.module';
 import { AuditLogsModule } from './modules/audit-logs/audit-logs.module';
 import { ActivityOutputsModule } from './modules/activity-outputs/activity-outputs.module';
 import { ResponsibilitiesModule } from './modules/responsibilities/responsibilities.module';
+import { WorkEnvironmentsModule } from './modules/work-environments/work-environments.module';
 import { AllExceptionsFilter } from './common/filters/all-exceptions.filter';
 import { TransformInterceptor } from './common/interceptors/transform.interceptor';
 import { AuditLogInterceptor } from './common/interceptors/audit-log.interceptor';
@@ -45,6 +46,7 @@ import { JwtAuthGuard } from './modules/auth/guards/jwt-auth.guard';
     AuditLogsModule,
     ActivityOutputsModule,
     ResponsibilitiesModule,
+    WorkEnvironmentsModule,
     HealthModule,
   ],
   controllers: [AppController],

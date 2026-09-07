@@ -17,6 +17,7 @@ import { AuditLog } from './../src/modules/audit-logs/entities/audit-log.entity'
 import { ActivityOutput } from './../src/modules/activity-outputs/entities/activity-output.entity';
 import { Responsibility } from './../src/modules/responsibilities/entities/responsibility.entity';
 import { Activity } from './../src/modules/responsibilities/entities/activity.entity';
+import { WorkEnvironment } from './../src/modules/work-environments/entities/work-environment.entity';
 import { DataSource } from 'typeorm';
 
 describe('AppController (e2e)', () => {
@@ -55,6 +56,8 @@ describe('AppController (e2e)', () => {
       .overrideProvider(getRepositoryToken(Responsibility))
       .useValue(mockRepo)
       .overrideProvider(getRepositoryToken(Activity))
+      .useValue(mockRepo)
+      .overrideProvider(getRepositoryToken(WorkEnvironment))
       .useValue(mockRepo)
       .overrideProvider(DataSource)
       .useValue({
