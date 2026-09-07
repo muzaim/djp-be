@@ -18,6 +18,7 @@ import { ActivityOutput } from './../src/modules/activity-outputs/entities/activ
 import { Responsibility } from './../src/modules/responsibilities/entities/responsibility.entity';
 import { Activity } from './../src/modules/responsibilities/entities/activity.entity';
 import { WorkEnvironment } from './../src/modules/work-environments/entities/work-environment.entity';
+import { WorkExperience } from './../src/modules/work-experiences/entities/work-experience.entity';
 import { DataSource } from 'typeorm';
 
 describe('AppController (e2e)', () => {
@@ -58,6 +59,8 @@ describe('AppController (e2e)', () => {
       .overrideProvider(getRepositoryToken(Activity))
       .useValue(mockRepo)
       .overrideProvider(getRepositoryToken(WorkEnvironment))
+      .useValue(mockRepo)
+      .overrideProvider(getRepositoryToken(WorkExperience))
       .useValue(mockRepo)
       .overrideProvider(DataSource)
       .useValue({
